@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+oberig_credentials.json
+*.log
+.vscode/
+.idea/
