@@ -13,7 +13,12 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from handlers.start_handler import start, show_main_menu
+from handlers.start_handler import (
+    start, 
+    show_main_menu,
+    latest_video_command,
+    feedback_command,
+)
 from handlers.help_handler import help_command
 from handlers.schedule_handler import (
     schedule_command,
@@ -23,11 +28,14 @@ from handlers.schedule_handler import (
 )
 from handlers.reminder_handler import schedule_event_reminders
 from utils.logger import logger
+from database import init_db
 
 
 # 🛡️ Завантаження змінних середовища
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
+if not TOKEN:
+    raise ValueError("❌ TELEGRAM_TOKEN не знайдено у файлі .env")
 CALENDAR_ID = os.getenv("CALENDAR_ID")
 
 
@@ -77,12 +85,25 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await set_reminder(update, context)
         elif text == "🔕 Вимкнути нагадування":
             await unset_reminder(update, context)
+        elif text in ["/latest_video", "▶️ Останнє відео"]:
+            await latest_video_command(update, context)
+        elif text == "🌐 Соцмережі":
+            await update.message.reply_text(
+                "🌐 *Офіційні сторінки хору OBERIG:*\n\n"
+                "📘 [Facebook](https://www.facebook.com/profile.php?id=100094519583534)\n"
+                "▶️ [YouTube](https://youtube.com/playlist?list=PLEkdnztUMQ7-05r94OMzHyCVMCXvkgrFn&si=YmlcTWci7Iyfsmss)",
+                parse_mode="Markdown"
+            )
+            logger.info("✅ Натиснуто кнопку '🌐 Соцмережі'")
+        elif text.startswith("/feedback"):
+            await feedback_command(update, context)
         else:
             logger.warning(f"⚠️ Невідома текстова команда: {text}")
             await update.message.reply_text("❌ Невідома команда. Скористайтесь доступними кнопками.")
     except Exception as e:
         logger.error(f"❌ Помилка у text_menu_handler: {e}")
         await update.message.reply_text("❌ Виникла помилка під час обробки команди.")
+
 
 
 # 🛡️ Обробник для кнопок InlineKeyboard
@@ -119,7 +140,9 @@ async def set_bot_commands(application):
         BotCommand("rozklad", "📅 Розклад подій"),
         BotCommand("reminder_on", "🔔 Увімкнути нагадування"),
         BotCommand("reminder_off", "🚫 Вимкнути нагадування"),
-        BotCommand("help", "ℹ️ Допомога")
+        BotCommand("latest_video", "▶️ Останнє відео YouTube"),
+        BotCommand("help", "ℹ️ Допомога"),
+        BotCommand("feedback", "📩 Надіслати відгук"),
     ]
     group_commands = [BotCommand("start", "👋 Вітання та інструкція")]
 
@@ -131,7 +154,10 @@ async def set_bot_commands(application):
 # 🛡️ Основна функція запуску
 async def main():
     logger.info("🔄 Запуск основного додатка...")
-
+    
+    init_db()  # Ініціалізація бази даних перед запуском бота    
+    logger.info("✅ База даних ініціалізована.")
+    
     application = ApplicationBuilder().token(TOKEN).build()
     await set_bot_commands(application)
 
@@ -142,6 +168,8 @@ async def main():
     application.add_handler(CommandHandler("reminder_off", unset_reminder))
     application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, text_menu_handler))
     application.add_handler(CallbackQueryHandler(button_handler))
+    application.add_handler(CommandHandler("latest_video", latest_video_command))
+    application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_error_handler(error_handler)
 
     schedule_event_reminders(application.job_queue)

@@ -139,10 +139,39 @@ def get_event_details(event_id: str):
         return None
 
 
+# 📺 **Отримання останнього відео з YouTube**
+import requests
+
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # Переконайтесь, що ключ додано до .env
+YOUTUBE_PLAYLIST_ID = "PLEkdnztUMQ7-05r94OMzHyCVMCXvkgrFn"
+
+def get_latest_youtube_video():
+    """
+    Отримує останнє відео зі списку YouTube.
+    """
+    try:
+        url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=1&playlistId={YOUTUBE_PLAYLIST_ID}&key={YOUTUBE_API_KEY}"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        if 'items' in data and len(data['items']) > 0:
+            video_id = data['items'][0]['snippet']['resourceId']['videoId']
+            logger.info(f"✅ Отримано останнє відео з ID: {video_id}")
+            return f"https://www.youtube.com/watch?v={video_id}"
+        else:
+            logger.warning("⚠️ У списку відтворення немає відео.")
+            return None
+    except Exception as e:
+        logger.error(f"❌ Помилка при отриманні останнього відео: {e}")
+        return None
+
+
 # 🛡️ **Експортуємо функції для доступу**
-__all__ = [
+___all__ = [
     'get_calendar_events',
     'get_today_events',
     'get_upcoming_event_reminders',
-    'get_event_details'
+    'get_event_details',
+    'get_latest_youtube_video'  # Додано нову функцію
 ]

@@ -1,19 +1,24 @@
 # database.py
 
 import sqlite3
+import os
 from utils.logger import logger
 from typing import Optional
+
+# 🛡️ Конфігурація шляху до бази даних
+DB_PATH = os.path.join(os.path.dirname(__file__), 'bot_data.db')
 
 # 🛡️ Підключення до бази даних
 def get_connection() -> sqlite3.Connection:
     try:
-        connection = sqlite3.connect('bot_data.db')
-        connection.row_factory = sqlite3.Row  # Дозволяє доступ до стовпців за іменами
+        logger.info(f"🔗 Підключення до бази даних: {DB_PATH}")
+        connection = sqlite3.connect(DB_PATH, check_same_thread=False)
+        connection.row_factory = sqlite3.Row  # Доступ до стовпців за іменами
+        logger.info("✅ Підключення до бази даних успішне.")
         return connection
     except sqlite3.Error as e:
         logger.error(f"❌ Помилка підключення до бази даних: {e}")
         raise
-
 
 # 🛡️ Ініціалізація бази даних
 def init_db():
@@ -31,7 +36,6 @@ def init_db():
     except sqlite3.Error as e:
         logger.error(f"❌ Помилка при ініціалізації бази даних: {e}")
 
-
 # 🛡️ Збереження значення за ключем
 def set_value(key: str, value: str):
     try:
@@ -42,10 +46,9 @@ def set_value(key: str, value: str):
                 ON CONFLICT(key) DO UPDATE SET value=excluded.value;
             ''', (key, value))
             connection.commit()
-            logger.info(f"✅ Збережено значення для ключа '{key}'.")
+            logger.info(f"✅ Збережено значення для ключа '{key}' зі значенням '{value}'.")
     except sqlite3.Error as e:
         logger.error(f"❌ Помилка при збереженні значення для ключа '{key}': {e}")
-
 
 # 🛡️ Отримання значення за ключем
 def get_value(key: str) -> Optional[str]:
@@ -54,11 +57,14 @@ def get_value(key: str) -> Optional[str]:
             cursor = connection.cursor()
             cursor.execute('SELECT value FROM reminders WHERE key=?', (key,))
             result = cursor.fetchone()
+            if result:
+                logger.info(f"✅ Отримано значення для ключа '{key}': {result[0]}")
+            else:
+                logger.info(f"⚠️ Значення для ключа '{key}' не знайдено.")
             return result[0] if result else None
     except sqlite3.Error as e:
         logger.error(f"❌ Помилка при отриманні значення для ключа '{key}': {e}")
         return None
-
 
 # 🛡️ Видалення значення за ключем
 def delete_value(key: str):
@@ -70,4 +76,3 @@ def delete_value(key: str):
             logger.info(f"✅ Видалено значення для ключа '{key}'.")
     except sqlite3.Error as e:
         logger.error(f"❌ Помилка при видаленні значення для ключа '{key}': {e}")
-

@@ -53,27 +53,29 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Використовуємо часовий пояс Берліну
             berlin_tz = pytz.timezone('Europe/Berlin')
 
-            emoji_numbers = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+            emoji_numbers = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
 
-            for index, event in enumerate(events[:5]):
+            for index, event in enumerate(events[:10]):
                 event_id = event.get("id", "")
                 summary = event.get("summary", "Без назви")
                 start = event["start"].get("dateTime", event["start"].get("date"))
+                end = event["end"].get("dateTime", event["end"].get("date"))
 
                 try:
-                    if 'T' in start:
-                        # Час у UTC -> локальний час
-                        event_dt = datetime.fromisoformat(start.replace('Z', '+00:00')).astimezone(berlin_tz)
+                    if 'T' in start and 'T' in end:
+                        start_dt = datetime.fromisoformat(start.replace('Z', '+00:00')).astimezone(berlin_tz)
+                        end_dt = datetime.fromisoformat(end.replace('Z', '+00:00')).astimezone(berlin_tz)
+                        start_date = start_dt.strftime('%d-%m-%Y')
+                        start_time = start_dt.strftime('%H:%M')
+                        end_time = end_dt.strftime('%H:%M')
                     else:
-                        # Подія на весь день
-                        event_dt = datetime.strptime(start, '%Y-%m-%d').replace(tzinfo=timezone.utc).astimezone(berlin_tz)
-
-                    start_date = event_dt.strftime('%d-%m-%Y')
-                    start_time = event_dt.strftime('%H:%M') if 'T' in start else "Весь день"
+                        start_date = datetime.strptime(start, '%Y-%m-%d').strftime('%d-%m-%Y')
+                        start_time = "Весь день"
+                        end_time = ""
 
                     response += (
                         f"{emoji_numbers[index]} *{summary}*\n"
-                        f"📅 {start_date} ⏰ {start_time}\n"
+                        f"📅 {start_date} ⏰ {start_time} - {end_time}\n"
                         f"──────────────\n"
                     )
                     buttons.append([
@@ -113,22 +115,26 @@ async def event_details_callback(update: Update, context: ContextTypes.DEFAULT_T
         if event:
             description = event.get("description", "Опис відсутній.")
             start = event["start"].get("dateTime", event["start"].get("date"))
+            end = event["end"].get("dateTime", event["end"].get("date"))
 
             berlin_tz = pytz.timezone('Europe/Berlin')
 
-            if 'T' in start:
-                event_dt = datetime.fromisoformat(start.replace('Z', '+00:00')).astimezone(berlin_tz)
+            if 'T' in start and 'T' in end:
+                start_dt = datetime.fromisoformat(start.replace('Z', '+00:00')).astimezone(berlin_tz)
+                end_dt = datetime.fromisoformat(end.replace('Z', '+00:00')).astimezone(berlin_tz)
+                start_date = start_dt.strftime('%d-%m-%Y')
+                start_time = start_dt.strftime('%H:%M')
+                end_time = end_dt.strftime('%H:%M')
             else:
-                event_dt = datetime.strptime(start, '%Y-%m-%d').replace(tzinfo=timezone.utc).astimezone(berlin_tz)
-
-            start_date = event_dt.strftime('%d-%m-%Y')
-            start_time = event_dt.strftime('%H:%M') if 'T' in start else "Весь день"
+                start_date = datetime.strptime(start, '%Y-%m-%d').strftime('%d-%m-%Y')
+                start_time = "Весь день"
+                end_time = ""
 
             response = (
                 f"📅 **Деталі події:**\n"
                 f"📌 **Назва:** {event['summary']}\n"
                 f"📅 **Дата:** {start_date}\n"
-                f"⏰ **Час:** {start_time}\n"
+                f"⏰ **Час:** {start_time} - {end_time}\n"
                 f"📝 **Опис:** {description}"
             )
             await query.message.reply_text(text=response, parse_mode="Markdown")
