@@ -48,6 +48,7 @@ from handlers.reminder_handler import (
     send_event_reminders,
     schedule_birthday_greetings,
     create_birthday_greetings_table,
+    startup_daily_reminder,
 )
 from utils.logger import logger
 from database import (
@@ -385,6 +386,7 @@ async def main():
 
     schedule_event_reminders(application.job_queue)
     job_queue = application.job_queue
+    job_queue.run_once(startup_daily_reminder, when=10)
     job_queue.run_repeating(check_and_notify_new_videos, interval=1800, first=10)
 
     create_birthday_greetings_table()
