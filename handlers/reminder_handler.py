@@ -15,6 +15,7 @@ import hashlib
 import os
 from telegram import Update
 from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 TEST_CHAT_ID = os.getenv("REMINDER_TEST_CHAT_ID")
@@ -33,17 +34,6 @@ def get_current_time():
     one_hour_later = now + timedelta(hours=1)
     return now, one_hour_later
 
-try:
-    current_date = datetime.now(berlin_tz).date()
-    if isinstance(current_date, str):
-        current_date = datetime.fromisoformat(current_date)
-    daily_reminder_sent = get_value('daily_reminder_sent') == str(current_date)
-    hourly_reminder_value = get_value('hourly_reminder_sent')
-    hourly_reminder_sent = set(hourly_reminder_value.split(',')) if hourly_reminder_value else set()
-except Exception as e:
-    logger.error(f"❌ Помилка під час ініціалізації змінних нагадувань: {e}")
-    daily_reminder_sent = False
-    hourly_reminder_sent = set()
 
 def get_active_chats() -> list[str]:
     """
@@ -145,12 +135,14 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
             event_time = event.get('start', {}).get('dateTime', 'Весь день')
             if event_time and 'T' in event_time:
                 event_time = datetime.fromisoformat(event_time.replace('Z', '+00:00')).astimezone(berlin_tz).strftime('%H:%M')
+            summary = escape_markdown(event.get('summary', ''), version=2)
             daily_message += (
-                f"📅 *{event['summary']}*\n"
+                f"📅 *{summary}*\n"
                 f"🕒 Час: {event_time}\n"
             )
             if 'location' in event and event['location']:
-                daily_message += f"📍 Місце: {event['location']}\n"
+                location = escape_markdown(event['location'], version=2)
+                daily_message += f"📍 Місце: {location}\n"
             daily_message += "\n"
         
         if len(daily_message) > 4096:
@@ -160,7 +152,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
             message = await context.bot.send_message(
                 chat_id=int(chat_id),
                 text=daily_message,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN_V2
             )
             save_bot_message(chat_id, message.message_id, "daily_reminder")
         
@@ -503,7 +495,7 @@ def schedule_event_reminders(job_queue: JobQueue):
     )
     job_queue.run_daily(
         send_daily_reminder,
-        time=time(hour=9, minute=0),
+        time=time(hour=9, minute=0, tzinfo=berlin_tz),
         days=(0, 1, 2, 3, 4, 5, 6),
     )
     logger.info("✅ Планування завдань для нагадувань успішно налаштовано.")
