@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-# Завантажуємо змінні оточення
-load_dotenv(dotenv_path=".env.new")
+# Завантажуємо змінні оточення з .env
+load_dotenv()
 
 # Отримуємо токен бота
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")

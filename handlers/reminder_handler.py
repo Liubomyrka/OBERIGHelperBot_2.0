@@ -5,7 +5,6 @@ from config import TIMEZONE
 from datetime import datetime, timedelta, time
 from database import (
     set_value, get_value, get_cursor,
-    add_user_to_reminders, remove_user_from_reminders,
     save_bot_message, db
 )
 import pytz
@@ -17,7 +16,9 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from utils import init_openai_api
+
+init_openai_api()
 TEST_CHAT_ID = os.getenv("REMINDER_TEST_CHAT_ID")
 berlin_tz = pytz.timezone(TIMEZONE)
 

@@ -12,8 +12,6 @@ from utils.logger import logger
 from database import (
     get_value,
     set_value,
-    add_user_to_reminders,
-    remove_user_from_reminders,
 )
 
 # Глобальний словник для кешування ID подій
@@ -233,33 +231,3 @@ async def event_details_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
 
 
-# 🠸 Увімкнення нагадувань
-async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await ensure_private_chat(update, context, "reminder_on"):
-        return
-
-    user_id = str(update.effective_user.id)
-    add_user_to_reminders(user_id)
-
-    await update.message.reply_text(
-        "✅ *Нагадування увімкнено!*\n"
-        "Ви будете отримувати сповіщення про події за годину до їх початку.",
-        parse_mode="Markdown",
-    )
-    logger.info(f"✅ Нагадування увімкнено для користувача {user_id}")
-
-
-# 🠸 Вимкнення нагадувань
-async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await ensure_private_chat(update, context, "reminder_off"):
-        return
-
-    user_id = str(update.effective_user.id)
-    remove_user_from_reminders(user_id)
-
-    await update.message.reply_text(
-        "🔕 *Нагадування вимкнено*\n"
-        "Ви більше не будете отримувати сповіщення про події за годину до їх початку.",
-        parse_mode="Markdown",
-    )
-    logger.info(f"🔕 Нагадування вимкнено для користувача {user_id}")

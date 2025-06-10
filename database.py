@@ -268,55 +268,36 @@ def save_event_reminder_hash(event_id: str, reminder_type: str, hash_value: str)
         logger.info(f"✅ Збережено хеш для події {event_id} ({reminder_type})")
     except sqlite3.Error as e:
         logger.error(f"❌ Помилка при збереженні хешу події {event_id}: {e}")
-def add_user_to_list(user_id: str, list_key: str = "bot_users"):
+
+
+def update_user_list(list_key: str, user_id: str, add: bool = True):
+    """Add or remove a user ID from a JSON list stored in the database."""
     try:
         users_str = get_value(list_key)
         users = json.loads(users_str) if users_str else []
         user_id = str(user_id)
-        if user_id not in users:
+        if add and user_id not in users:
             users.append(user_id)
             set_value(list_key, json.dumps(users))
             logger.info(f"✅ Додано користувача {user_id} до списку {list_key}")
-        return users
-    except Exception as e:
-        logger.error(
-            f"❌ Помилка при додаванні користувача {user_id} до списку {list_key}: {e}"
-        )
-        return []
-
-
-def add_user_to_reminders(user_id: str, list_key: str = "users_with_reminders"):
-    try:
-        users_str = get_value(list_key)
-        users = json.loads(users_str) if users_str else []
-        user_id = str(user_id)
-        if user_id not in users:
-            users.append(user_id)
-            set_value(list_key, json.dumps(users))
-            logger.info(f"✅ Додано користувача {user_id} до списку {list_key}")
-        return users
-    except Exception as e:
-        logger.error(
-            f"❌ Помилка при додаванні користувача {user_id} до списку {list_key}: {e}"
-        )
-        return []
-
-
-def remove_user_from_reminders(user_id: str, list_key: str = "users_with_reminders"):
-    try:
-        users_str = get_value(list_key)
-        users = json.loads(users_str) if users_str else []
-        user_id = str(user_id)
-        if user_id in users:
+        elif not add and user_id in users:
             users.remove(user_id)
             set_value(list_key, json.dumps(users))
             logger.info(f"✅ Видалено користувача {user_id} зі списку {list_key}")
         return users
     except Exception as e:
-        logger.error(
-            f"❌ Помилка при видаленні користувача {user_id} зі списку {list_key}: {e}"
-        )
+        logger.error(f"❌ Помилка при оновленні списку {list_key}: {e}")
         return []
+def add_user_to_list(user_id: str, list_key: str = "bot_users"):
+    return update_user_list(list_key, user_id, add=True)
+
+
+def add_user_to_reminders(user_id: str, list_key: str = "users_with_reminders"):
+    return update_user_list(list_key, user_id, add=True)
+
+
+def remove_user_from_reminders(user_id: str, list_key: str = "users_with_reminders"):
+    return update_user_list(list_key, user_id, add=False)
 
 
 def add_group_to_list(chat_id: str, chat_title: str):
@@ -369,6 +350,7 @@ __all__ = [
     "get_value",
     "set_value",
     "delete_value",
+    "update_user_list",
     "add_user_to_list",
     "add_user_to_reminders",
     "remove_user_from_reminders",
@@ -382,6 +364,7 @@ db = type("ReminderDB", (), {
     "get_value": staticmethod(get_value),
     "set_value": staticmethod(set_value),
     "delete_value": staticmethod(delete_value),
+    "update_user_list": staticmethod(update_user_list),
     "add_user_to_reminders": staticmethod(add_user_to_reminders),
     "remove_user_from_reminders": staticmethod(remove_user_from_reminders),
     "save_bot_message": staticmethod(save_bot_message),
