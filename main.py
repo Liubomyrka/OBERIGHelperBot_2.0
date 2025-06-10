@@ -386,7 +386,11 @@ async def main():
 
     schedule_event_reminders(application.job_queue)
     job_queue = application.job_queue
-    job_queue.run_once(startup_daily_reminder, when=10)
+    job_queue.run_once(
+        startup_daily_reminder,
+        when=10,
+        job_kwargs={"misfire_grace_time": 60},
+    )
     job_queue.run_repeating(check_and_notify_new_videos, interval=1800, first=10)
 
     create_birthday_greetings_table()
