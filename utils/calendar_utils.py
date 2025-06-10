@@ -1,5 +1,6 @@
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from utils.youtube_utils import get_youtube_service
 import os
 from datetime import datetime
 import pytz
@@ -254,11 +255,11 @@ def get_latest_youtube_video():
     Отримує посилання на найновше відео за датою публікації з плейліста YouTube.
     """
     try:
-        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        youtube = get_youtube_service()
 
         request = youtube.playlistItems().list(
             part="snippet",
-            playlistId="PLEkdnztUMQ7-05r94OMzHyCVMCXvkgrFn",
+            playlistId=OBERIG_PLAYLIST_ID,
             maxResults=50,
         )
         response = request.execute()
@@ -307,11 +308,11 @@ def get_most_popular_youtube_video():
     Отримує посилання на найпопулярніше відео з плейліста YouTube.
     """
     try:
-        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        youtube = get_youtube_service()
 
         request = youtube.playlistItems().list(
             part="snippet",
-            playlistId="PLEkdnztUMQ7-05r94OMzHyCVMCXvkgrFn",
+            playlistId=OBERIG_PLAYLIST_ID,
             maxResults=50,
         )
         response = request.execute()
@@ -364,11 +365,11 @@ def get_top_10_videos():  # Змінюємо назву
     Повертає список кортежів (назва, url, кількість переглядів).
     """
     try:
-        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        youtube = get_youtube_service()
 
         request = youtube.playlistItems().list(
             part="snippet",
-            playlistId="PLEkdnztUMQ7-05r94OMzHyCVMCXvkgrFn",
+            playlistId=OBERIG_PLAYLIST_ID,
             maxResults=50,
         )
         response = request.execute()
@@ -427,7 +428,7 @@ async def check_new_videos():
         )
         now = datetime.now(BERLIN_TZ)
 
-        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        youtube = get_youtube_service()
 
         request = youtube.playlistItems().list(
             part="snippet", playlistId=OBERIG_PLAYLIST_ID, maxResults=10

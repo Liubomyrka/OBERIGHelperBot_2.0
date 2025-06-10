@@ -1,7 +1,6 @@
 import os
 import asyncio
 import nest_asyncio
-from dotenv import load_dotenv
 from telegram import (
     Update,
     BotCommandScopeAllPrivateChats,
@@ -36,8 +35,6 @@ from handlers.start_handler import (
 from handlers.help_handler import help_command
 from handlers.schedule_handler import (
     schedule_command,
-    set_reminder,
-    unset_reminder,
     event_details_callback,
 )
 from handlers.reminder_handler import (
@@ -56,7 +53,7 @@ from database import (
     migrate_database,
     get_value,
     set_value,
-    add_user_to_reminders,
+    update_user_list,
 )
 from handlers.share_handler import share_latest_video, share_popular_video
 from handlers.notification_handler import (
@@ -88,12 +85,7 @@ from utils.calendar_utils import (
 import json
 import time
 from telegram.error import Conflict
-
-load_dotenv()
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-if not TOKEN:
-    raise ValueError("TELEGRAM_TOKEN не знайдено у файлі .env")
-CALENDAR_ID = os.getenv("CALENDAR_ID")
+from config import TELEGRAM_TOKEN
 
 
 async def log_command(command_name: str, success: bool):
@@ -206,7 +198,7 @@ async def main():
         users_with_reminders = json.loads(get_value("users_with_reminders") or "[]")
         for user_id in users:
             if user_id not in users_with_reminders:
-                add_user_to_reminders(user_id)
+                update_user_list("users_with_reminders", user_id, add=True)
                 logger.info(
                     f"✅ Автоматично додано користувача {user_id} до нагадувань за замовчуванням"
                 )
@@ -215,7 +207,7 @@ async def main():
     if video_notifications is None:
         set_value("video_notifications_disabled", json.dumps(False))
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     # Налаштування команд для різних типів чатів
     private_commands = [

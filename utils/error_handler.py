@@ -3,6 +3,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from utils.logger import logger
+from config import ADMIN_ID
 
 
 # 🛡️ Глобальний обробник помилок
@@ -28,8 +29,8 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             show_alert=True,
         )
 
-    # Повідомлення адміністратору (за потреби, додайте ID адміністратора)
-    admin_chat_id = "@LiubomyrK"  # Змініть на актуальний ID адміністратора
+    # Повідомлення адміністратору
+    admin_chat_id = ADMIN_ID
     try:
         await context.bot.send_message(
             chat_id=admin_chat_id,

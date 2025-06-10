@@ -2,7 +2,6 @@ import os
 import asyncio  # Додаємо імпорт для асинхронної затримки
 import io
 import json
-from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ContextTypes
 from utils.logger import logger
@@ -18,13 +17,10 @@ from google.oauth2 import service_account
 from telegram import InputFile
 import tempfile  # Для кросплатформної роботи з тимчасовими файлами
 from database import get_value, set_value, save_bot_message
-
-# Завантажуємо змінні оточення
-load_dotenv(dotenv_path=".env.new")
+from config import GOOGLE_CREDENTIALS
 
 # Налаштування Google Drive API
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
-GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")
 NOTY_FOLDER_ID = os.getenv(
     "NOTY_FOLDER_ID", "1mLWk6qMDYJ9OtHJPjFA5gI_kTtoUsiIK"
 )  # Використовуємо значення з .env.new або дефолт

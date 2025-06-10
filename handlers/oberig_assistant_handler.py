@@ -13,9 +13,10 @@ from utils.calendar_utils import (
 from database import get_value, set_value
 from datetime import datetime
 from handlers.drive_utils import list_sheets, search_sheets, send_sheet
+from utils import init_openai_api
 
 # Налаштування API-ключа OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+init_openai_api()
 
 # Скорочений системний контекст для зменшення токенів
 OBERIG_SYSTEM_PROMPT = """

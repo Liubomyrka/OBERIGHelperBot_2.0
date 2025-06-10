@@ -19,13 +19,13 @@ from database import (
     set_value,
     get_value,
     add_user_to_list,
-    add_user_to_reminders,
-    remove_user_from_reminders,
     add_group_to_list,
     save_bot_message,
+    update_user_list,
 )
 from handlers.help_handler import help_command
-from handlers.schedule_handler import schedule_command, set_reminder, unset_reminder
+from handlers.schedule_handler import schedule_command
+from handlers.reminder_handler import set_reminder, unset_reminder
 from handlers.notification_handler import toggle_video_notifications
 from handlers.admin_handler import (
     admin_menu_command,
@@ -43,6 +43,7 @@ from handlers.drive_utils import (
     search_sheets,
     send_sheet,
 )
+from handlers.notes_utils import search_notes
 
 SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
 
@@ -133,7 +134,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Збережено інформацію про користувачів: {get_value('bot_users_info')}"
         )
         if update.effective_chat.type == "private":
-            add_user_to_reminders(user_id)
+            update_user_list("users_with_reminders", user_id, add=True)
             await show_main_menu(update, context)
             message = await update.message.reply_text(
                 WELCOME_TEXT, parse_mode="Markdown"
@@ -362,32 +363,6 @@ async def show_notes_by_name(update: Update, context: ContextTypes.DEFAULT_TYPE)
     logger.info("✅ Відображено список нот, відсортованих за назвою")
 
 
-async def search_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробляє пошук нот за ключовим словом і показує клавіатуру з результатами."""
-    chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
-        return
-
-    keyword = update.message.text
-    sheets = await search_sheets(update, context, keyword)
-    if sheets:
-        keyboard = []
-        for sheet in sheets:
-            keyboard.append([KeyboardButton(f"📃 {sheet['name']}")])
-        keyboard.append([KeyboardButton("🔙 Меню нот")])
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        message = await update.message.reply_text(
-            "🎵 *Обери ноти внизу* ⬇️", parse_mode="Markdown", reply_markup=reply_markup
-        )
-        save_bot_message(chat_id, message.message_id, "general")
-    else:
-        message = await update.message.reply_text(
-            f"🔍 *Ноти за '{keyword}' не знайдено 😔* Спробуй ще! ⬇️",
-            parse_mode="Markdown",
-        )
-        save_bot_message(chat_id, message.message_id, "general")
-    context.user_data.pop("awaiting_keyword", None)
-    logger.info(f"✅ Пошук за ключовим словом '{keyword}' виконано")
 
 
 async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1021,6 +996,5 @@ __all__ = [
     "show_notes_menu",
     "show_all_notes",
     "show_notes_by_name",
-    "search_notes",
     "get_sheet_command",
 ]
