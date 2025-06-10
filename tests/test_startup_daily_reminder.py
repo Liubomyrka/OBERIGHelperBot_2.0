@@ -65,3 +65,8 @@ def test_startup_daily_reminder_triggers(monkeypatch, stub_dependencies):
     asyncio.run(module.startup_daily_reminder(context))
 
     send_mock.assert_awaited_once_with(context)
+
+
+def test_main_schedules_startup_daily_reminder_with_grace(monkeypatch, stub_dependencies):
+    data = open('main.py').read()
+    assert 'misfire_grace_time' in data
