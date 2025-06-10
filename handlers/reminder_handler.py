@@ -526,6 +526,7 @@ def generate_event_hash(event: dict, reminder_type: str) -> str:
 
 __all__ = [
     "schedule_event_reminders", "set_reminder", "unset_reminder", "send_daily_reminder",
+    "startup_daily_reminder",
     "send_event_reminders", "check_birthday_greetings", "schedule_birthday_greetings",
     "create_birthday_greetings_table", "startup_birthday_check",
     "cleanup_old_birthday_greetings", "schedule_cleanup"
