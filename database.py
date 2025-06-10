@@ -217,7 +217,7 @@ def get_value(key: str) -> Optional[str]:
                 table = "users"
             elif key.startswith(("group_chats", "group_notifications_disabled")):
                 table = "groups"
-            elif key.startswith(("sent_reminders_persistent", "persistent_", "sent_videos", "users_with_reminders")):
+            elif key.startswith(("sent_reminders_persistent", "persistent_", "sent_videos", "users_with_reminders")) or "reminder" in key.lower() or "persistent" in key.lower():
                 table = "persistent_reminders"
             cursor.execute(f"SELECT value FROM {table} WHERE key=?", (key,))
             result = cursor.fetchone()
@@ -235,7 +235,7 @@ def delete_value(key: str):
                 table = "users"
             elif key.startswith(("group_chats", "group_notifications_disabled")):
                 table = "groups"
-            elif key.startswith(("sent_reminders_persistent", "persistent_")):
+            elif key.startswith(("sent_reminders_persistent", "persistent_")) or "reminder" in key.lower() or "persistent" in key.lower():
                 table = "persistent_reminders"
             cursor.execute(f"DELETE FROM {table} WHERE key=?", (key,))
         logger.info(f"✅ Видалено значення для ключа '{key}'.")
