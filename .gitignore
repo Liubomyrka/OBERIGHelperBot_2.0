@@ -1,0 +1,21 @@
+# Ігноруємо папку з кешем Python
+__pycache__/
+*.pyc
+
+# Ігноруємо файли конфігурації
+.env
+.env.*
+oberig_credentials.json
+
+script.py
+script_backup.py.py
+
+
+# Ігноруємо тимчасові файли
+*.log
+*.tmp
+
+# Ігноруємо специфічні артефакти
+tatus
+desktop.ini
+tatus
