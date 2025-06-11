@@ -10,11 +10,6 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 from utils.logger import logger
-from utils.calendar_utils import (
-    get_latest_youtube_video,
-    get_most_popular_youtube_video,
-    get_top_10_videos,
-)
 from database import (
     set_value,
     get_value,
@@ -40,10 +35,20 @@ from handlers.feedback_handler import start_feedback, show_my_feedback
 from handlers.oberig_assistant_handler import handle_oberig_assistant
 from handlers.drive_utils import (
     list_sheets,
-    search_sheets,
     send_sheet,
 )
 from handlers.notes_utils import search_notes
+
+from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
+from .youtube_menu import (
+    show_youtube_menu,
+    latest_video_command,
+    most_popular_video_command,
+    top_10_videos_command,
+)
+from .schedule_menu import show_schedule_menu
+from .user_utils import auto_add_user
+
 
 SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
 
@@ -63,17 +68,6 @@ SCHEDULE_MENU_TEXT_GROUP = """📅 *Меню розкладу*
 
 🔔 Нагадування завжди увімкнені для групових чатів і не можуть бути вимкнені."""
 
-YOUTUBE_MENU_TEXT = """🎥 *Меню YouTube*
-
-Виберіть одну з опцій:
-📺 - Переглянути всі відео
-🆕 - Переглянути найновіше відео
-🔥 - Переглянути найпопулярніше відео
-🏆 - Топ-10 найпопулярніших відео
-
-🔔 Керування сповіщеннями:
-- 🔔 Увімкнути сповіщення - отримувати повідомлення про нові відео
-- 🔕 Вимкнути сповіщення - припинити отримувати повідомлення"""
 
 MAIN_MENU_TEXT = """
 🎶 *Головне меню OBERIG*  
@@ -196,34 +190,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_bot_message(chat_id, message.message_id, "general")
 
 
-async def latest_video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await auto_add_user(update, context)
-    logger.info("🔄 Виконання команди: /latest_video")
-    try:
-        video_url = get_latest_youtube_video()
-        if video_url:
-            message = await update.message.reply_text(
-                f"🆕 *Найновіше відео хору OBERIG:*\n\n"
-                f"👆 [Переглянути відео]({video_url})\n\n"
-                "📤 Поділитися цим відео: `/share_latest`",
-                parse_mode="Markdown",
-            )
-            save_bot_message(
-                str(update.effective_chat.id), message.message_id, "general"
-            )
-            logger.info("✅ Команда /latest_video виконана успішно.")
-        else:
-            message = await update.message.reply_text(ERROR_VIDEO_NOT_FOUND)
-            save_bot_message(
-                str(update.effective_chat.id), message.message_id, "general"
-            )
-            logger.warning(ERROR_VIDEO_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"❌ Помилка у виконанні команди /latest_video: {e}")
-        message = await update.message.reply_text(ERROR_GENERAL)
-        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
-
-
 async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     keyboard = [
@@ -251,123 +217,11 @@ async def redirect_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE
     logger.info("✅ Користувач перенаправлений у приватний чат")
 
 
-async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показує початкове меню нот із клавіатурою."""
-    chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
-        return
-
-    keyboard = [
-        [KeyboardButton("📋 Всі ноти"), KeyboardButton("🔤 За назвою")],
-        [KeyboardButton("🔍 За ключовим словом"), KeyboardButton("🔙 Головне меню")],
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-    if chat_id == "-1001906486581":
-        await context.bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=update.message.message_id - 1,
-            reply_markup=reply_markup,
-        )
-    else:
-        message = await update.message.reply_text(
-            "🎵 *Обери ноти внизу* ⬇️", parse_mode="Markdown", reply_markup=reply_markup
-        )
-        save_bot_message(chat_id, message.message_id, "general")
-    logger.info("✅ Відображено початкове меню нот")
-
-
-async def show_all_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показує список усіх нот із клавіатурою."""
-    chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
-        return
-
-    # Отримуємо список нот
-    sheets = await list_sheets(update, context)
-    if not sheets:
-        await update.message.reply_text("❌ *Помилка з нотами 😕* Спробуй пізніше! ⬇️")
-        return
-
-    # Створюємо клавіатуру з нотами
-    keyboard = []
-    all_sheets = []
-    for category, items in sheets.items():
-        all_sheets.extend(items)
-    all_sheets.sort(key=lambda x: x["name"].lower())  # Сортуємо за назвою
-
-    # Додаємо кнопки для кожної ноти
-    for sheet in all_sheets:
-        keyboard.append([KeyboardButton(f"📃 {sheet['name']}")])
-
-    # Додаємо кнопку "Повернутися до меню нот"
-    keyboard.append([KeyboardButton("🔙 Меню нот")])
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-    if chat_id == "-1001906486581":
-        await context.bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=update.message.message_id - 1,
-            reply_markup=reply_markup,
-        )
-    else:
-        message = await update.message.reply_text(
-            "🎵 *Вибери ноти внизу* ⬇️", parse_mode="Markdown", reply_markup=reply_markup
-        )
-        save_bot_message(chat_id, message.message_id, "general")
-    logger.info("✅ Відображено список усіх нот")
-
-
-async def show_notes_by_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показує список нот, відсортованих за назвою, із клавіатурою."""
-    chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
-        return
-
-    # Отримуємо список нот
-    sheets = await list_sheets(update, context)
-    if not sheets:
-        await update.message.reply_text("❌ *Помилка з нотами 😕* Спробуй пізніше! ⬇️")
-        return
-
-    # Створюємо клавіатуру з нотами, відсортованими за назвою
-    keyboard = []
-    all_sheets = []
-    for category, items in sheets.items():
-        all_sheets.extend(items)
-    all_sheets.sort(key=lambda x: x["name"].lower())  # Сортуємо за назвою
-
-    # Додаємо кнопки для кожної ноти
-    for sheet in all_sheets:
-        keyboard.append([KeyboardButton(f"📃 {sheet['name']}")])
-
-    # Додаємо кнопку "Повернутися до меню нот"
-    keyboard.append([KeyboardButton("🔙 Меню нот")])
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-    if chat_id == "-1001906486581":
-        await context.bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=update.message.message_id - 1,
-            reply_markup=reply_markup,
-        )
-    else:
-        message = await update.message.reply_text(
-            "🎵 *Вибери ноти внизу* ⬇️ (за назвою)",
-            parse_mode="Markdown",
-            reply_markup=reply_markup,
-        )
-        save_bot_message(chat_id, message.message_id, "general")
-    logger.info("✅ Відображено список нот, відсортованих за назвою")
-
-
-
-
 async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     chat_id = str(update.effective_chat.id)
+    from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
+    from .youtube_menu import show_youtube_menu, latest_video_command, most_popular_video_command, top_10_videos_command
     chat_type = update.effective_chat.type
     text = update.message.text
     logger.info(f"🔄 Обробка текстової кнопки або повідомлення: {text}")
@@ -608,147 +462,6 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_bot_message(chat_id, message.message_id, "general")
 
 
-async def top_10_videos_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await auto_add_user(update, context)
-    logger.info("Виконання команди: /top_10_videos")
-    try:
-        videos = get_top_10_videos()
-        if not videos:
-            message = await update.message.reply_text(
-                "⚠️ *Відео не знайдено 😔* Спробуй пізніше! ⬇️"
-            )
-            save_bot_message(
-                str(update.effective_chat.id), message.message_id, "general"
-            )
-            logger.warning("Відео не знайдено")
-            return
-
-        # Отримуємо поточну сторінку з user_data (за замовчуванням 0)
-        page = context.user_data.get("top_10_page", 0)
-        videos_per_page = 5
-        total_pages = (len(videos) + videos_per_page - 1) // videos_per_page
-
-        # Перевіряємо межі сторінки
-        if page < 0:
-            page = 0
-        elif page >= total_pages:
-            page = total_pages - 1
-        context.user_data["top_10_page"] = page
-
-        # Отримуємо відео для поточної сторінки
-        start_idx = page * videos_per_page
-        end_idx = min(start_idx + videos_per_page, len(videos))
-        current_videos = videos[start_idx:end_idx]
-
-        # Формуємо текст повідомлення
-        message_text = "*🏆 Топ-10 найпопулярніших відео:*\n\n"
-        for i, (title, url, views) in enumerate(current_videos, start_idx + 1):
-            title = title[:120] + "..." if len(title) > 120 else title  # Збільшуємо до 120 символів
-            message_text += f"**{i}.** [{title}]({url})\n👁 {views:,} переглядів\n\n"
-
-        # Додаємо інформацію про сторінку
-        message_text += f"\n📄 Сторінка {page + 1} з {total_pages}"
-
-        # Додаємо кнопки пагінації
-        keyboard = []
-        if page > 0:
-            keyboard.append(InlineKeyboardButton("⬅️ Попередня п'ятірка", callback_data="top_10_prev"))
-        if page < total_pages - 1:
-            keyboard.append(InlineKeyboardButton("Наступна п'ятірка ➡️", callback_data="top_10_next"))
-        reply_markup = InlineKeyboardMarkup([keyboard]) if keyboard else None
-
-        # Надсилаємо або оновлюємо повідомлення
-        if update.callback_query:
-            await update.callback_query.edit_message_text(
-                message_text,
-                parse_mode="Markdown",
-                disable_web_page_preview=True,
-                reply_markup=reply_markup,
-            )
-        else:
-            message = await update.message.reply_text(
-                message_text,
-                parse_mode="Markdown",
-                disable_web_page_preview=True,
-                reply_markup=reply_markup,
-            )
-            save_bot_message(
-                str(update.effective_chat.id), message.message_id, "general"
-            )
-
-        logger.info(f"Команда /top_10_videos виконана успішно (Сторінка {page + 1})")
-    except Exception as e:
-        logger.error(f"Помилка у виконанні команди /top_10_videos: {e}")
-        message = await update.message.reply_text(
-            "❌ *Щось пішло не так 😔* Спробуй ще раз! ⬇️"
-        )
-        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
-
-
-async def show_youtube_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await auto_add_user(update, context)
-    logger.info("Спроба відобразити меню YouTube")
-    try:
-        keyboard = [
-            [KeyboardButton("📺 Наші відео")],
-            [KeyboardButton("🆕 Найновше відео")],
-            [KeyboardButton("🔥 Найпопулярніше відео")],
-            [KeyboardButton("🏆 Топ-10 відео")],
-            [
-                KeyboardButton("🔔 Увімкнути сповіщення"),
-                KeyboardButton("🔕 Вимкнути сповіщення"),
-            ],
-            [KeyboardButton("🔙 Головне меню")],
-        ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        message = await update.message.reply_text(
-            YOUTUBE_MENU_TEXT,
-            parse_mode="Markdown",
-            reply_markup=reply_markup,
-        )
-        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
-        logger.info("Відображено меню YouTube")
-    except Exception as e:
-        logger.error(f"Помилка при відображенні меню YouTube: {e}")
-        message = await update.message.reply_text(
-            "❌ *Щось пішло не так 😔* Спробуй ще раз! ⬇️"
-        )
-        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
-
-
-async def most_popular_video_command(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
-    await auto_add_user(update, context)
-    logger.info("🔄 Виконання команди: /most_popular_video")
-    try:
-        video_url = get_most_popular_youtube_video()
-        if video_url:
-            message = await update.message.reply_text(
-                f"🔥 *Найпопулярніше відео хору OBERIG:*\n\n"
-                f"👆 [Переглянути відео]({video_url})\n\n"
-                "📤 Поділитися цим відео: `/share_popular`",
-                parse_mode="Markdown",
-            )
-            save_bot_message(
-                str(update.effective_chat.id), message.message_id, "general"
-            )
-            logger.info("✅ Команда /most_popular_video виконана успішно")
-        else:
-            message = await update.message.reply_text(
-                "⚠️ *Відео не знайдено 😔* Спробуй пізніше! ⬇️"
-            )
-            save_bot_message(
-                str(update.effective_chat.id), message.message_id, "general"
-            )
-            logger.warning("Відео не знайдено")
-    except Exception as e:
-        logger.error(f"❌ Помилка у виконанні команди /most_popular_video: {e}")
-        message = await update.message.reply_text(
-            "❌ *Щось пішло не так 😔* Спробуй ще раз! ⬇️"
-        )
-        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
-
 
 async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
@@ -793,6 +506,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         save_bot_message(str(update.effective_chat.id), message.message_id, "general")
 
 
+
 async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     """Повертає клавіатуру головного меню з урахуванням ролі користувача."""
     keyboard = [
@@ -810,6 +524,7 @@ async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     query = update.callback_query
+    from .youtube_menu import top_10_videos_command
     await query.answer()
     data = query.data
 
@@ -833,50 +548,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning(f"⚠️ Невідома callback команда: {data}")
 
 
-async def auto_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        user_id = str(update.effective_user.id)
-        chat_type = update.effective_chat.type
-        bot_users_str = get_value("bot_users")
-        bot_users = json.loads(bot_users_str) if bot_users_str else []
-        bot_users_info_str = get_value("bot_users_info")
-        bot_users_info = json.loads(bot_users_info_str) if bot_users_info_str else {}
-
-        # Додаємо користувача до bot_users і bot_users_info лише якщо його ще немає
-        if user_id not in bot_users:
-            bot_users.append(user_id)
-            bot_users_info[user_id] = (
-                update.effective_user.first_name
-                or update.effective_user.username
-                or "Невідомо"
-            )
-            set_value("bot_users", json.dumps(bot_users))
-            set_value("bot_users_info", json.dumps(bot_users_info))
-            logger.info(f"✅ Додано нового користувача {user_id} до списку bot_users")
-
-        # Додаємо до нагадувань лише для приватних чатів і лише якщо користувача ще немає в users_with_reminders
-        if chat_type == "private":
-            users_with_reminders_str = get_value("users_with_reminders")
-            users_with_reminders = (
-                json.loads(users_with_reminders_str) if users_with_reminders_str else []
-            )
-            if user_id not in users_with_reminders:
-                users_with_reminders.append(user_id)
-                set_value("users_with_reminders", json.dumps(users_with_reminders))
-                logger.info(
-                    f"✅ Автоматично додано користувача {user_id} до нагадувань"
-                )
-
-        # Додаємо групу, якщо це груповий чат
-        if chat_type in ["group", "supergroup"]:
-            add_group_to_list(
-                str(update.effective_chat.id),
-                update.effective_chat.title or "Невідома група",
-            )
-
-        logger.info(f"✅ Користувач {user_id} оброблений при взаємодії")
-    except Exception as e:
-        logger.error(f"❌ Помилка при автоматичному додаванні користувача: {e}")
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -927,77 +598,15 @@ async def show_group_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_bot_message(str(update.effective_chat.id), message.message_id, "general")
 
 
-async def get_sheet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Обробляє команду /get_sheet для надсилання нот з Google Drive.
-    """
-    await auto_add_user(update, context)
-
-    # Перевіряємо, чи передано номер файлу
-    if not context.args or len(context.args) == 0:
-        await update.message.reply_text(
-            "❌ Вкажіть номер файлу з попереднього списку. Наприклад, /get_sheet 1"
-        )
-        return
-
-    try:
-        # Отримуємо номер файлу
-        file_number = context.args[0].strip(".")
-
-        # Перевіряємо, чи є число
-        if not file_number.isdigit():
-            await update.message.reply_text(
-                "❌ Номер файлу має бути цілим числом. Наприклад, /get_sheet 1"
-            )
-            return
-
-        # Отримуємо список нот
-        sheets = await list_sheets(update, context)
-        if not sheets:
-            await update.message.reply_text(
-                "❌ *Помилка з нотами 😕* Спробуй пізніше! ⬇️"
-            )
-            return
-
-        # Збираємо всі ноти в один список
-        all_sheets = []
-        for category, items in sheets.items():
-            all_sheets.extend(items)
-
-        # Перевіряємо діапазон номера
-        index = int(file_number) - 1
-        if index < 0 or index >= len(all_sheets):
-            await update.message.reply_text(
-                f"❌ Номер файлу має бути від 1 до {len(all_sheets)}"
-            )
-            return
-
-        # Надсилаємо ноту
-        sheet = all_sheets[index]
-        await send_sheet(update, context, sheet["id"])
-
-    except Exception as e:
-        logger.error(f"Помилка при отриманні нот: {e}")
-        await update.message.reply_text(
-            "❌ Виникла несподівана помилка. Спробуйте пізніше. #Оберіг 😔"
-        )
-
 
 __all__ = [
     "start",
     "show_main_menu",
     "show_group_menu",
-    "latest_video_command",
     "feedback_command",
     "text_menu_handler",
-    "show_youtube_menu",
-    "most_popular_video_command",
-    "top_10_videos_command",
     "button_click",
-    "auto_add_user",
     "redirect_to_private",
-    "show_notes_menu",
-    "show_all_notes",
-    "show_notes_by_name",
-    "get_sheet_command",
+    "show_schedule_menu",
+
 ]

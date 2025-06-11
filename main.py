@@ -21,17 +21,29 @@ from handlers.start_handler import (
     start,
     show_main_menu,
     show_group_menu,
-    latest_video_command,
     feedback_command,
     text_menu_handler,
+    button_click,
+
+)
+from handlers.youtube_menu import (
+    latest_video_command,
     show_youtube_menu,
     most_popular_video_command,
-    top_10_videos_command,  # Оновлюємо
-    button_click,
+    top_10_videos_command,
+)
+
     auto_add_user,
     redirect_to_private,
-    show_notes_menu,
 )
+from handlers.youtube_menu import (
+    latest_video_command,
+    show_youtube_menu,
+    most_popular_video_command,
+    top_10_videos_command,
+)
+
+from handlers.notes_menu import show_notes_menu
 from handlers.help_handler import help_command
 from handlers.schedule_handler import (
     schedule_command,
