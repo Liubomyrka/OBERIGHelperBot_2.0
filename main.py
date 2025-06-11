@@ -24,15 +24,6 @@ from handlers.start_handler import (
     feedback_command,
     text_menu_handler,
     button_click,
-
-)
-from handlers.youtube_menu import (
-    latest_video_command,
-    show_youtube_menu,
-    most_popular_video_command,
-    top_10_videos_command,
-)
-
     auto_add_user,
     redirect_to_private,
 )
