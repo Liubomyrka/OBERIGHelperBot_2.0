@@ -119,12 +119,19 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         logger.info("⏰ Зараз не вказаний інтервал для щоденних нагадувань (9:00–21:00).")
         return
     already_sent = get_value('daily_reminder_sent')
-    if already_sent == current_date.isoformat():
-        logger.info("🔄 Щоденне нагадування вже було відправлено сьогодні.")
-        return
+    stored_hash = get_value('daily_reminder_hash')
     try:
-        logger.info("🔔 Початок надсилання щоденних нагадувань...")
         events = get_today_events()
+
+        # Обчислюємо хеш поточних подій на сьогодні
+        event_signatures = [get_event_signature(e) for e in events]
+        current_hash = hashlib.sha256("".join(sorted(event_signatures)).encode('utf-8')).hexdigest()
+
+        if already_sent == current_date.isoformat() and stored_hash == current_hash:
+            logger.info("🔄 Щоденне нагадування вже було відправлено сьогодні і події не змінювались.")
+            return
+
+        logger.info("🔔 Початок надсилання щоденних нагадувань...")
         if not events:
             logger.info("⚠️ Подій на сьогодні немає, нагадування не відправлено.")
             return
@@ -173,6 +180,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
                 f"✅ Щоденні нагадування на {current_date} відправлено успішно."
             )
             set_value("daily_reminder_sent", current_date.isoformat())
+            set_value("daily_reminder_hash", current_hash)
         else:
             logger.error(
                 "❌ Не вдалося надіслати щоденне нагадування жодному чату."
@@ -181,6 +189,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"❌ Помилка у функції send_daily_reminder: {e}")
         if "Message is too long" in str(e):
             set_value('daily_reminder_sent', current_date.isoformat())
+            set_value('daily_reminder_hash', current_hash)
             logger.info(f"✅ Стан daily_reminder_sent збережено попри помилку довжини повідомлення")
 
 async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
