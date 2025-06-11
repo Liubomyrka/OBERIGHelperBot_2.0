@@ -152,6 +152,10 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
             if 'location' in event and event['location']:
                 location = escape_markdown(event['location'], version=2)
                 daily_message += f"📍 Місце: {location}\n"
+            link = event.get('htmlLink')
+            if link:
+                escaped_link = escape_markdown(link, version=2)
+                daily_message += f"🔗 [Відкрити в календарі]({escaped_link})\n"
             daily_message += "\n"
         
         if len(daily_message) > 4096:
