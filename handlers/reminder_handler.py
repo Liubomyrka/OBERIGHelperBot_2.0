@@ -181,6 +181,9 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
     logger.info("🔔 Початок перевірки нагадувань...")
 
+    # 🆕 Try sending the daily schedule first in case it wasn't sent yet
+    await send_daily_reminder(context)
+
     try:
         events = get_today_events()
         logger.info(f"📅 Отримано {len(events)} подій із календаря.")
@@ -212,8 +215,9 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
             link = event.get("htmlLink", "")
             start_formatted = start_dt.strftime("%H:%M")
 
+            header = escape_markdown("🔔 Подія через годину!", version=2)
             reminder_text = (
-                f"🔔 Подія через годину!\n\n"
+                f"{header}\n\n"
                 f"📅 *{title}*\n"
                 f"🕒 Час: {start_formatted}\n"
                 f"📍 Місце: {location}\n"
