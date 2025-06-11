@@ -130,6 +130,9 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
             return
         
         active_chats = get_active_chats()
+        logger.info(f"📨 Щоденні нагадування буде надіслано у {len(active_chats)} чати")
+  
+         clean-main
         header = escape_markdown(
             f"🔔 Розклад подій на сьогодні, {current_date.day:02d}"
             f" {current_date.strftime('%B').lower()}:",
