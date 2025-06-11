@@ -28,17 +28,20 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
 
         # Отримуємо статус сповіщень для користувачів і груп
         video_notifications_disabled_str = get_value("video_notifications_disabled")
-        video_notifications_disabled = (
-            json.loads(video_notifications_disabled_str)
-            if video_notifications_disabled_str
-            else {}
-        )
+        if video_notifications_disabled_str:
+            video_notifications_disabled = json.loads(video_notifications_disabled_str)
+            if not isinstance(video_notifications_disabled, dict):
+                video_notifications_disabled = {}
+        else:
+            video_notifications_disabled = {}
+
         group_notifications_disabled_str = get_value("group_notifications_disabled")
-        group_notifications_disabled = (
-            json.loads(group_notifications_disabled_str)
-            if group_notifications_disabled_str
-            else {}
-        )
+        if group_notifications_disabled_str:
+            group_notifications_disabled = json.loads(group_notifications_disabled_str)
+            if not isinstance(group_notifications_disabled, dict):
+                group_notifications_disabled = {}
+        else:
+            group_notifications_disabled = {}
 
         for video in new_videos:
             video_id = video["video_id"]
@@ -141,11 +144,12 @@ async def toggle_video_notifications(
     """
     user_id = str(update.effective_user.id)
     video_notifications_disabled_str = get_value("video_notifications_disabled")
-    video_notifications_disabled = (
-        json.loads(video_notifications_disabled_str)
-        if video_notifications_disabled_str
-        else {}
-    )
+    if video_notifications_disabled_str:
+        video_notifications_disabled = json.loads(video_notifications_disabled_str)
+        if not isinstance(video_notifications_disabled, dict):
+            video_notifications_disabled = {}
+    else:
+        video_notifications_disabled = {}
 
     video_notifications_disabled[user_id] = not enable
     set_value("video_notifications_disabled", json.dumps(video_notifications_disabled))
