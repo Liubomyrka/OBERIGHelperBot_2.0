@@ -212,8 +212,9 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
             link = event.get("htmlLink", "")
             start_formatted = start_dt.strftime("%H:%M")
 
+            header = escape_markdown("🔔 Подія через годину!", version=2)
             reminder_text = (
-                f"🔔 Подія через годину!\n\n"
+                f"{header}\n\n"
                 f"📅 *{title}*\n"
                 f"🕒 Час: {start_formatted}\n"
                 f"📍 Місце: {location}\n"
