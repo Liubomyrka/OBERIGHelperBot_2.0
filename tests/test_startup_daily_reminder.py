@@ -56,7 +56,7 @@ def test_startup_daily_reminder_triggers(monkeypatch, stub_dependencies):
     class FakeDT(datetime.datetime):
         @classmethod
         def now(cls, tz=None):
-            return datetime.datetime(2024, 1, 1, 10, 0, tzinfo=datetime.timezone.utc)
+            return datetime.datetime(2024, 1, 1, 22, 0, tzinfo=datetime.timezone.utc)
 
     monkeypatch.setattr(module, 'datetime', FakeDT)
 
