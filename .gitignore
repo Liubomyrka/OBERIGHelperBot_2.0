@@ -16,6 +16,4 @@ script_backup.py.py
 *.tmp
 
 # Ігноруємо специфічні артефакти
-tatus
 desktop.ini
-tatus
