@@ -14,7 +14,11 @@ from utils.calendar_utils import (
 )
 from database import save_bot_message
 from utils.logger import logger
+
 from .user_utils import auto_add_user
+
+from .start_handler import auto_add_user
+
 
 YOUTUBE_MENU_TEXT = """🎥 *Меню YouTube*
 

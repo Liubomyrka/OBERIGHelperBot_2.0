@@ -38,6 +38,7 @@ from handlers.drive_utils import (
     send_sheet,
 )
 from handlers.notes_utils import search_notes
+
 from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
 from .youtube_menu import (
     show_youtube_menu,
@@ -47,6 +48,26 @@ from .youtube_menu import (
 )
 from .schedule_menu import show_schedule_menu
 from .user_utils import auto_add_user
+
+
+SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
+
+Виберіть одну з опцій:
+📋 - Переглянути розклад подій
+🕒 - Переглянути події на сьогодні
+
+🔔 Нагадування (за замовчуванням увімкнені):
+- 🔕 Вимкнути нагадування - припинити отримувати сповіщення за годину до події
+- 🔔 Увімкнути нагадування - відновити сповіщення за годину до події"""
+
+SCHEDULE_MENU_TEXT_GROUP = """📅 *Меню розкладу*
+
+Виберіть одну з опцій:
+📋 - Переглянути розклад подій
+🕒 - Переглянути події на сьогодні
+
+🔔 Нагадування завжди увімкнені для групових чатів і не можуть бути вимкнені."""
+
 
 MAIN_MENU_TEXT = """
 🎶 *Головне меню OBERIG*  
@@ -199,6 +220,8 @@ async def redirect_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     chat_id = str(update.effective_chat.id)
+    from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
+    from .youtube_menu import show_youtube_menu, latest_video_command, most_popular_video_command, top_10_videos_command
     chat_type = update.effective_chat.type
     text = update.message.text
     logger.info(f"🔄 Обробка текстової кнопки або повідомлення: {text}")
@@ -440,6 +463,49 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await auto_add_user(update, context)
+    logger.info("🔄 Спроба відобразити меню розкладу")
+    try:
+        if update.effective_chat.type == "private":
+            users_with_reminders_str = get_value("users_with_reminders")
+            users_with_reminders = (
+                json.loads(users_with_reminders_str) if users_with_reminders_str else []
+            )
+            user_id = str(update.effective_user.id)
+            if user_id in users_with_reminders:
+                reminder_button = KeyboardButton("🔕 Вимкнути нагадування")
+            else:
+                reminder_button = KeyboardButton("🔔 Увімкнути нагадування")
+
+            keyboard = [
+                [KeyboardButton("📋 Розклад подій")],
+                [KeyboardButton("🕒 Події на сьогодні")],
+                [reminder_button],
+                [KeyboardButton("🔙 Головне меню")],
+            ]
+            menu_text = SCHEDULE_MENU_TEXT_PRIVATE
+        else:
+            keyboard = [
+                [KeyboardButton("📋 Розклад подій")],
+                [KeyboardButton("🕒 Події на сьогодні")],
+                [KeyboardButton("🔙 Головне меню")],
+            ]
+            menu_text = SCHEDULE_MENU_TEXT_GROUP
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        message = await update.message.reply_text(
+            menu_text, parse_mode="Markdown", reply_markup=reply_markup
+        )
+        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
+        logger.info("✅ Відображено меню розкладу")
+    except Exception as e:
+        logger.error(f"❌ Помилка при відображенні меню розкладу: {e}")
+        message = await update.message.reply_text(
+            "❌ *Щось пішло не так 😔* Спробуй ще раз! ⬇️"
+        )
+        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
+
+
 
 async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     """Повертає клавіатуру головного меню з урахуванням ролі користувача."""
@@ -458,6 +524,7 @@ async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     query = update.callback_query
+    from .youtube_menu import top_10_videos_command
     await query.answer()
     data = query.data
 
@@ -540,4 +607,6 @@ __all__ = [
     "text_menu_handler",
     "button_click",
     "redirect_to_private",
+    "show_schedule_menu",
+
 ]

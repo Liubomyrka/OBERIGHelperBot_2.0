@@ -4,7 +4,11 @@ from telegram.ext import ContextTypes
 from utils.logger import logger
 from .drive_utils import list_sheets, send_sheet
 from database import save_bot_message
+
 from .user_utils import auto_add_user
+
+from .start_handler import auto_add_user
+
 
 
 async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
