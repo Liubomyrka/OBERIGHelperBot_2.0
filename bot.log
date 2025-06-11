@@ -4142,3 +4142,4 @@ telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo faile
 2025-06-11 17:53:21 - OBERIGHelperBot - INFO - start_handler.py:398 - ✅ Вибрано ноту 'Ганий козак гарний (Оберіг).pdf'
 2025-06-11 18:32:21 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
 2025-06-11 18:33:48 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
+2025-06-11 18:47:14 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
