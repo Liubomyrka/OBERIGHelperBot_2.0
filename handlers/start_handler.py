@@ -406,7 +406,6 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     standard_commands = [
         "/start",
-        "Старт",
         "📅 Розклад",
         "ℹ️ Допомога",
         "▶️ YouTube",
@@ -442,9 +441,7 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         if text in standard_commands or text.startswith("/"):
-            if text == "Старт":
-                await start(update, context)
-            elif text == "📅 Розклад":
+            if text == "📅 Розклад":
                 await show_schedule_menu(update, context)
                 logger.info("✅ Натиснуто кнопку '📅 Розклад'")
             elif text == "ℹ️ Допомога":
@@ -799,7 +796,6 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     """Повертає клавіатуру головного меню з урахуванням ролі користувача."""
     keyboard = [
-        [KeyboardButton("Старт")],
         [KeyboardButton("📅 Розклад"), KeyboardButton("▶️ YouTube")],
         [KeyboardButton("🎵 Ноти"), KeyboardButton("🌐 Соцмережі")],
         [KeyboardButton("📩 Надіслати відгук"), KeyboardButton("📋 Мої відгуки")],
