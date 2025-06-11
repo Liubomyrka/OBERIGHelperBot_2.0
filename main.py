@@ -63,7 +63,6 @@ from handlers.notification_handler import (
     check_and_notify_new_videos,
     toggle_video_notifications,
 )
-from utils.error_handler import error_handler
 from handlers.admin_handler import (
     analytics_command,
     admin_menu_command,
