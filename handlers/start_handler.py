@@ -758,13 +758,20 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     logger.info("🔄 Спроба відобразити меню розкладу")
     try:
         if update.effective_chat.type == "private":
+            users_with_reminders_str = get_value("users_with_reminders")
+            users_with_reminders = (
+                json.loads(users_with_reminders_str) if users_with_reminders_str else []
+            )
+            user_id = str(update.effective_user.id)
+            if user_id in users_with_reminders:
+                reminder_button = KeyboardButton("Вимкнути нагадування")
+            else:
+                reminder_button = KeyboardButton("Увімкнути нагадування")
+
             keyboard = [
                 [KeyboardButton("📋 Розклад подій")],
                 [KeyboardButton("🕒 Події на сьогодні")],
-                [
-                    KeyboardButton("Вимкнути нагадування"),
-                    KeyboardButton("Увімкнути нагадування"),
-                ],
+                [reminder_button],
                 [KeyboardButton("🔙 Головне меню")],
             ]
             menu_text = "📅 *Меню розкладу*  Обери внизу ⬇️:"
