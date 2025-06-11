@@ -1,6 +1,7 @@
 @echo off
 title OBERIG Helper Bot
-cd /d "E:\програмування\OBERIGHelperBot"
+REM Перехід до директорії, в якій знаходиться скрипт
+cd /d "%~dp0"
 
 REM Активація віртуального середовища
 call venv\Scripts\activate
