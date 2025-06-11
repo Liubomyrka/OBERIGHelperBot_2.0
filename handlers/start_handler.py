@@ -39,6 +39,17 @@ from handlers.drive_utils import (
 )
 from handlers.notes_utils import search_notes
 
+from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
+from .youtube_menu import (
+    show_youtube_menu,
+    latest_video_command,
+    most_popular_video_command,
+    top_10_videos_command,
+)
+from .schedule_menu import show_schedule_menu
+from .user_utils import auto_add_user
+
+
 SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
 
 Виберіть одну з опцій:
@@ -56,6 +67,7 @@ SCHEDULE_MENU_TEXT_GROUP = """📅 *Меню розкладу*
 🕒 - Переглянути події на сьогодні
 
 🔔 Нагадування завжди увімкнені для групових чатів і не можуть бути вимкнені."""
+
 
 MAIN_MENU_TEXT = """
 🎶 *Головне меню OBERIG*  
@@ -450,6 +462,7 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_bot_message(chat_id, message.message_id, "general")
 
 
+
 async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     logger.info("🔄 Спроба відобразити меню розкладу")
@@ -493,6 +506,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         save_bot_message(str(update.effective_chat.id), message.message_id, "general")
 
 
+
 async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     """Повертає клавіатуру головного меню з урахуванням ролі користувача."""
     keyboard = [
@@ -534,50 +548,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning(f"⚠️ Невідома callback команда: {data}")
 
 
-async def auto_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        user_id = str(update.effective_user.id)
-        chat_type = update.effective_chat.type
-        bot_users_str = get_value("bot_users")
-        bot_users = json.loads(bot_users_str) if bot_users_str else []
-        bot_users_info_str = get_value("bot_users_info")
-        bot_users_info = json.loads(bot_users_info_str) if bot_users_info_str else {}
-
-        # Додаємо користувача до bot_users і bot_users_info лише якщо його ще немає
-        if user_id not in bot_users:
-            bot_users.append(user_id)
-            bot_users_info[user_id] = (
-                update.effective_user.first_name
-                or update.effective_user.username
-                or "Невідомо"
-            )
-            set_value("bot_users", json.dumps(bot_users))
-            set_value("bot_users_info", json.dumps(bot_users_info))
-            logger.info(f"✅ Додано нового користувача {user_id} до списку bot_users")
-
-        # Додаємо до нагадувань лише для приватних чатів і лише якщо користувача ще немає в users_with_reminders
-        if chat_type == "private":
-            users_with_reminders_str = get_value("users_with_reminders")
-            users_with_reminders = (
-                json.loads(users_with_reminders_str) if users_with_reminders_str else []
-            )
-            if user_id not in users_with_reminders:
-                users_with_reminders.append(user_id)
-                set_value("users_with_reminders", json.dumps(users_with_reminders))
-                logger.info(
-                    f"✅ Автоматично додано користувача {user_id} до нагадувань"
-                )
-
-        # Додаємо групу, якщо це груповий чат
-        if chat_type in ["group", "supergroup"]:
-            add_group_to_list(
-                str(update.effective_chat.id),
-                update.effective_chat.title or "Невідома група",
-            )
-
-        logger.info(f"✅ Користувач {user_id} оброблений при взаємодії")
-    except Exception as e:
-        logger.error(f"❌ Помилка при автоматичному додаванні користувача: {e}")
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -636,7 +606,7 @@ __all__ = [
     "feedback_command",
     "text_menu_handler",
     "button_click",
-    "auto_add_user",
     "redirect_to_private",
     "show_schedule_menu",
+
 ]
