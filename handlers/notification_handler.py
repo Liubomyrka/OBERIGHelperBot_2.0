@@ -1,5 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 from utils.logger import logger
 from utils.calendar_utils import check_new_videos
 from database import get_value, set_value, get_cursor
@@ -46,6 +48,7 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
         for video in new_videos:
             video_id = video["video_id"]
             title = video["title"]
+            escaped_title = escape_markdown(title, version=2)
             url = video["url"]
 
             # Список для зберігання ID повідомлень
@@ -60,8 +63,8 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                     try:
                         message = await context.bot.send_message(
                             chat_id=user_id,
-                            text=f"🎥 Нове відео на каналі!\n\n*{title}*\n{url}",
-                            parse_mode="Markdown",
+                            text=f"🎥 Нове відео на каналі!\n\n*{escaped_title}*\n{url}",
+                            parse_mode=ParseMode.MARKDOWN_V2,
                         )
                         message_ids.append((str(user_id), message.message_id))
                         logger.info(
@@ -82,8 +85,8 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                     try:
                         message = await context.bot.send_message(
                             chat_id=chat_id,
-                            text=f"🎥 Нове відео на каналі!\n\n*{title}*\n{url}",
-                            parse_mode="Markdown",
+                            text=f"🎥 Нове відео на каналі!\n\n*{escaped_title}*\n{url}",
+                            parse_mode=ParseMode.MARKDOWN_V2,
                         )
                         message_ids.append((str(chat_id), message.message_id))
                         logger.info(
@@ -156,7 +159,7 @@ async def toggle_video_notifications(
 
     status = "увімкнено" if enable else "вимкнено"
     await update.message.reply_text(
-        f"🎥 Сповіщення про нові відео {status} для вас.", parse_mode="Markdown"
+        f"🎥 Сповіщення про нові відео {status} для вас.", parse_mode=ParseMode.MARKDOWN_V2
     )
     logger.info(
         f"✅ Сповіщення про відео {'увімкнено' if enable else 'вимкнено'} для користувача {user_id}"
