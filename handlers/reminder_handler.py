@@ -130,7 +130,12 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
             return
         
         active_chats = get_active_chats()
-        daily_message = f"🔔 *Розклад подій на сьогодні, {current_date.day:02d} {current_date.strftime('%B').lower()}:*\n\n"
+        header = escape_markdown(
+            f"🔔 Розклад подій на сьогодні, {current_date.day:02d}"
+            f" {current_date.strftime('%B').lower()}:",
+            version=2,
+        )
+        daily_message = f"*{header}*\n\n"
         for event in events:
             event_time = event.get('start', {}).get('dateTime', 'Весь день')
             if event_time and 'T' in event_time:
@@ -148,16 +153,30 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         if len(daily_message) > 4096:
             daily_message = daily_message[:4090] + "..."
         
+        sent_any = False
         for chat_id in active_chats:
-            message = await context.bot.send_message(
-                chat_id=int(chat_id),
-                text=daily_message,
-                parse_mode=ParseMode.MARKDOWN_V2
+            try:
+                message = await context.bot.send_message(
+                    chat_id=int(chat_id),
+                    text=daily_message,
+                    parse_mode=ParseMode.MARKDOWN_V2,
+                )
+                save_bot_message(chat_id, message.message_id, "daily_reminder")
+                sent_any = True
+            except Exception as e:
+                logger.warning(
+                    f"⚠️ Не вдалося надіслати щоденне нагадування в чат {chat_id}: {e}"
+                )
+
+        if sent_any:
+            logger.info(
+                f"✅ Щоденні нагадування на {current_date} відправлено успішно."
             )
-            save_bot_message(chat_id, message.message_id, "daily_reminder")
-        
-        logger.info(f"✅ Щоденні нагадування на {current_date} відправлено успішно.")
-        set_value('daily_reminder_sent', current_date.isoformat())
+            set_value("daily_reminder_sent", current_date.isoformat())
+        else:
+            logger.error(
+                "❌ Не вдалося надіслати щоденне нагадування жодному чату."
+            )
     except Exception as e:
         logger.error(f"❌ Помилка у функції send_daily_reminder: {e}")
         if "Message is too long" in str(e):
@@ -180,6 +199,9 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
     one_hour_later = now + timedelta(hours=1)
     logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
     logger.info("🔔 Початок перевірки нагадувань...")
+
+    # 🆕 Try sending the daily schedule first in case it wasn't sent yet
+    await send_daily_reminder(context)
 
     try:
         events = get_today_events()
@@ -212,8 +234,9 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
             link = event.get("htmlLink", "")
             start_formatted = start_dt.strftime("%H:%M")
 
+            header = escape_markdown("🔔 Подія через годину!", version=2)
             reminder_text = (
-                f"🔔 Подія через годину!\n\n"
+                f"{header}\n\n"
                 f"📅 *{title}*\n"
                 f"🕒 Час: {start_formatted}\n"
                 f"📍 Місце: {location}\n"
