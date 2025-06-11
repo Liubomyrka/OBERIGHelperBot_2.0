@@ -127,7 +127,6 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         events = get_today_events()
         if not events:
             logger.info("⚠️ Подій на сьогодні немає, нагадування не відправлено.")
-            set_value('daily_reminder_sent', current_date.isoformat())
             return
         
         active_chats = get_active_chats()
@@ -207,22 +206,23 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
                 continue
 
             # Формуємо текст нагадування
-            title = event.get("summary", "Без назви")
-            description = event.get("description", "")
-            location = event.get("location", "—")
+            title = escape_markdown(event.get("summary", "Без назви"), version=2)
+            description = escape_markdown(event.get("description", ""), version=2)
+            location = escape_markdown(event.get("location", "—"), version=2)
             link = event.get("htmlLink", "")
             start_formatted = start_dt.strftime("%H:%M")
 
             reminder_text = (
                 f"🔔 Подія через годину!\n\n"
-                f"📅 {title}\n"
+                f"📅 *{title}*\n"
                 f"🕒 Час: {start_formatted}\n"
                 f"📍 Місце: {location}\n"
             )
             if description:
                 reminder_text += f"📝 Опис: {description}\n"
             if link:
-                reminder_text += f"🔗 [Відкрити в календарі]({link})"
+                escaped_link = escape_markdown(link, version=2)
+                reminder_text += f"🔗 [Відкрити в календарі]({escaped_link})"
 
             # Хеш тексту
             event_id = event.get("id")
@@ -244,7 +244,7 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
                     await context.bot.send_message(
                         chat_id=int(chat_id),
                         text=reminder_text,
-                        parse_mode=ParseMode.MARKDOWN,
+                        parse_mode=ParseMode.MARKDOWN_V2,
                         disable_web_page_preview=True,
                     )
                 except Exception as e:
