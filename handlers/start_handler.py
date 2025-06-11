@@ -702,7 +702,7 @@ async def show_youtube_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         message = await update.message.reply_text(
-            "🎥 *Меню YouTube*  Обери внизу ⬇️:",
+            YOUTUBE_MENU_TEXT,
             parse_mode="Markdown",
             reply_markup=reply_markup,
         )
@@ -771,14 +771,14 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 [reminder_button],
                 [KeyboardButton("🔙 Головне меню")],
             ]
-            menu_text = "📅 *Меню розкладу*  Обери внизу ⬇️:"
+            menu_text = SCHEDULE_MENU_TEXT_PRIVATE
         else:
             keyboard = [
                 [KeyboardButton("📋 Розклад подій")],
                 [KeyboardButton("🕒 Події на сьогодні")],
                 [KeyboardButton("🔙 Головне меню")],
             ]
-            menu_text = "📅 *Меню розкладу*  Обери внизу ⬇️:"
+            menu_text = SCHEDULE_MENU_TEXT_GROUP
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         message = await update.message.reply_text(
             menu_text, parse_mode="Markdown", reply_markup=reply_markup
