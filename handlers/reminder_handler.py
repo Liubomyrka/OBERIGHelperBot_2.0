@@ -200,11 +200,7 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
     logger.info("🔔 Початок перевірки нагадувань...")
 
-<<<<<<< HEAD
-  # 🆕 Try sending the daily schedule first in case it wasn't sent yet
-=======
     # 🆕 Try sending the daily schedule first in case it wasn't sent yet
->>>>>>> 6e95ebd978749224e9a0f3c3df3721e2d0808572
     await send_daily_reminder(context)
 
     try:
