@@ -115,9 +115,6 @@ async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
     current_date = now.date()
-    if not (9 <= now.hour < 21):
-        logger.info("⏰ Зараз не вказаний інтервал для щоденних нагадувань (9:00–21:00).")
-        return
     already_sent = get_value('daily_reminder_sent')
     stored_hash = get_value('daily_reminder_hash')
     try:
@@ -194,14 +191,11 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
 
 async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
-    if 9 <= now.hour < 21:
-        already_sent = get_value('daily_reminder_sent')
-        today = now.date().isoformat()
-        if already_sent != today:
-            logger.info("🔄 Запуск щоденних нагадувань при старті бота.")
-            await send_daily_reminder(context)
-    else:
-        logger.info("⏳ Зараз не час для щоденних нагадувань (9:00–21:00).")
+    already_sent = get_value('daily_reminder_sent')
+    today = now.date().isoformat()
+    if already_sent != today:
+        logger.info("🔄 Запуск щоденних нагадувань при старті бота.")
+        await send_daily_reminder(context)
 
 async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(pytz.timezone(TIMEZONE))
@@ -228,11 +222,14 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"❌ Подія має список у 'start', пропущено: {start_info}")
                 continue
 
-            start_str = start_info.get("dateTime")
+            start_str = start_info.get("dateTime") or start_info.get("date")
             if not start_str:
                 continue
 
-            start_dt = datetime.fromisoformat(start_str).astimezone(pytz.timezone(TIMEZONE))
+            if "T" in start_str:
+                start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00")).astimezone(pytz.timezone(TIMEZONE))
+            else:
+                start_dt = datetime.strptime(start_str, "%Y-%m-%d").replace(tzinfo=pytz.timezone(TIMEZONE))
             if not (now < start_dt <= one_hour_later):
                 continue
 
@@ -271,6 +268,7 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
             # 🔁 Надсилання у тестовий чат або всім користувачам з reminders
             target_chats = [TEST_CHAT_ID] if TEST_CHAT_ID else db.get_users_with_reminders()
 
+            sent_success = False
             for chat_id in target_chats:
                 try:
                     await context.bot.send_message(
@@ -279,12 +277,13 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
                         parse_mode=ParseMode.MARKDOWN_V2,
                         disable_web_page_preview=True,
                     )
+                    sent_success = True
                 except Exception as e:
                     logger.warning(f"⚠️ Не вдалося надіслати повідомлення в чат {chat_id}: {e}")
 
-
-            db.save_event_reminder_hash(event_id, reminder_type, reminder_hash)
-            notified_count += 1
+            if sent_success:
+                db.save_event_reminder_hash(event_id, reminder_type, reminder_hash)
+                notified_count += 1
 
         except Exception as e:
             logger.error(f"❌ Помилка при обробці події #{idx} (id: {event.get('id')}): {e}")
@@ -524,12 +523,12 @@ def schedule_event_reminders(job_queue: JobQueue):
     job_queue.run_repeating(
         send_event_reminders,
         interval=600,  # 600 секунд = 10 хвилин
-        first=10
+        first=10,
     )
-    job_queue.run_daily(
+    job_queue.run_repeating(
         send_daily_reminder,
-        time=time(hour=9, minute=0, tzinfo=berlin_tz),
-        days=(0, 1, 2, 3, 4, 5, 6),
+        interval=3600,  # раз на годину
+        first=15,
     )
     logger.info("✅ Планування завдань для нагадувань успішно налаштовано.")
 
