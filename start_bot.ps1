@@ -3,8 +3,8 @@
 # Встановлення політики виконання скриптів
 Set-ExecutionPolicy RemoteSigned -Scope Process
 
-# Перехід до директорії проекту
-Set-Location "E:\програмування\OBERIGHelperBot"
+# Перехід до директорії, в якій знаходиться скрипт
+Set-Location $PSScriptRoot
 
 # Активація віртуального середовища
 .\venv\Scripts\Activate.ps1

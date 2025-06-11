@@ -3,6 +3,9 @@
 # Встановлення політики виконання скриптів
 Set-ExecutionPolicy RemoteSigned -Scope Process
 
+# Перехід до директорії, в якій знаходиться скрипт
+Set-Location $PSScriptRoot
+
 # Знаходимо та закриваємо процеси Python, пов'язані з ботом
 $pythonProcesses = Get-Process python -ErrorAction SilentlyContinue | 
     Where-Object { $_.CommandLine -like "*main.py*" }
