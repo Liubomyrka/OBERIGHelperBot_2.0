@@ -4140,3 +4140,4 @@ telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo faile
 2025-06-11 17:53:11 - OBERIGHelperBot - INFO - database.py:207 - ✅ Збережено значення для ключа sheet_music_cache в таблиці users
 2025-06-11 17:53:11 - OBERIGHelperBot - INFO - drive_utils.py:73 - Список нот успішно закешовано
 2025-06-11 17:53:21 - OBERIGHelperBot - INFO - start_handler.py:398 - ✅ Вибрано ноту 'Ганий козак гарний (Оберіг).pdf'
+2025-06-11 18:32:21 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
