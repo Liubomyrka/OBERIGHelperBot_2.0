@@ -7,10 +7,6 @@ from database import save_bot_message
 
 from .user_utils import auto_add_user
 
-from .start_handler import auto_add_user
-
-
-
 async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показує початкове меню нот із клавіатурою."""
     chat_id = str(update.effective_chat.id)
