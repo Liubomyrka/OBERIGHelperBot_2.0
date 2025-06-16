@@ -70,3 +70,25 @@ def test_startup_daily_reminder_triggers(monkeypatch, stub_dependencies):
 def test_main_schedules_startup_daily_reminder_with_grace(monkeypatch, stub_dependencies):
     data = open('main.py').read()
     assert 'misfire_grace_time' in data
+
+
+def test_startup_daily_reminder_skips_during_quiet_hours(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    monkeypatch.setattr(module, 'get_value', lambda key: None)
+    send_mock = AsyncMock()
+    monkeypatch.setattr(module, 'send_daily_reminder', send_mock)
+
+    class FakeDT(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.datetime(2024, 1, 1, 1, 0, tzinfo=datetime.timezone.utc)
+
+    monkeypatch.setattr(module, 'datetime', FakeDT)
+
+    context = AsyncMock()
+    import asyncio
+    asyncio.run(module.startup_daily_reminder(context))
+
+    send_mock.assert_not_called()
