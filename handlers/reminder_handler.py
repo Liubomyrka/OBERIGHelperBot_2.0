@@ -370,9 +370,8 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         if attempts == max_attempts:
             logger.error(f"❌ Не вдалося згенерувати завершене привітання для {name} після {max_attempts} спроб")
 
-        # Екрануємо спеціальні символи для Telegram
-        for char in ['!', '.', '(', ')', '-', '+', '=', '[', ']', '{', '}', '#']:
-            greeting = greeting.replace(char, f'\\{char}')
+        # Екрануємо спеціальні символи для Markdown V2
+        greeting = escape_markdown(greeting, version=2)
 
         # Перевіряємо наявність емоджі та хештегів
         if not any(emoji in greeting for emoji in ['🎵', '🎂', '😊', '🎉']):
@@ -387,8 +386,11 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         return greeting
     except openai.OpenAIError as e:
         logger.error(f"❌ Помилка при генерації привітання для {name}: {e}")
-        default = f"🎵 Друзі, чи знаєте ви, що у нас є іменинник\\? Вітаємо тебе, {name}, з днем народження\\! Нехай мелодії радують тебе\\! 😊 #Оберіг #ДеньНародження"
-        return default
+        default = (
+            f"🎵 Друзі, чи знаєте ви, що у нас є іменинник? "
+            f"Вітаємо тебе, {name}, з днем народження! Нехай мелодії радують тебе! 😊 #Оберіг #ДеньНародження"
+        )
+        return escape_markdown(default, version=2)
 
 async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
@@ -446,7 +448,11 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
 
         # Надсилаємо привітання в усі активні чати
         for group_chat_id in active_group_chats:
-            await context.bot.send_message(chat_id=int(group_chat_id), text=greeting)
+            await context.bot.send_message(
+                chat_id=int(group_chat_id),
+                text=greeting,
+                parse_mode=ParseMode.MARKDOWN_V2,
+            )
             logger.info(f"Надіслано {greeting_type} привітання для {name} у чат {group_chat_id}")
 
         # Зберігаємо привітання для запису в базу
