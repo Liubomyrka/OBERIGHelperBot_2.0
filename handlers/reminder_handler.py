@@ -114,6 +114,10 @@ async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
+    if now.hour < 8:
+        logger.info("\ud83d\udd07 Нічний режим активний, нагадування не надсилається")
+        return
+
     current_date = now.date()
     already_sent = get_value('daily_reminder_sent')
     stored_hash = get_value('daily_reminder_hash')
@@ -195,6 +199,9 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
 
 async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
+    if now.hour < 8:
+        logger.info("\ud83d\udd07 Нічний режим: щоденне нагадування буде надіслано після 08:00")
+        return
     already_sent = get_value('daily_reminder_sent')
     today = now.date().isoformat()
     if already_sent != today:
@@ -206,10 +213,6 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
     one_hour_later = now + timedelta(hours=1)
     logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
     logger.info("🔔 Початок перевірки нагадувань...")
-
-    # 🆕 Try sending the daily schedule first in case it wasn't sent yet
-    await send_daily_reminder(context)
-
     try:
         events = get_today_events()
         logger.info(f"📅 Отримано {len(events)} подій із календаря.")
