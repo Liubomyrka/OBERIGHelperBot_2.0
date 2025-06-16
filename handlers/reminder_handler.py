@@ -548,7 +548,8 @@ def schedule_birthday_greetings(job_queue: JobQueue):
 
 def create_birthday_greetings_table():
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS birthday_greetings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 event_id TEXT NOT NULL,
@@ -556,7 +557,15 @@ def create_birthday_greetings_table():
                 greeting_type TEXT NOT NULL CHECK(greeting_type IN ('morning', 'evening')),
                 greeting_text TEXT NOT NULL
             )
-        """)
+            """
+        )
+
+        cursor.execute("PRAGMA table_info(birthday_greetings)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if "greeting_text" not in columns:
+            cursor.execute(
+                "ALTER TABLE birthday_greetings ADD COLUMN greeting_text TEXT"
+            )
     logger.info("✅ Таблиця birthday_greetings створена або вже існує.")
 
 def schedule_event_reminders(job_queue: JobQueue):
