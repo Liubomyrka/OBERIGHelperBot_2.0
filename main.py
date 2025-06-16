@@ -63,7 +63,6 @@ from handlers.notification_handler import (
     check_and_notify_new_videos,
     toggle_video_notifications,
 )
-from utils.error_handler import error_handler
 from handlers.admin_handler import (
     analytics_command,
     admin_menu_command,
@@ -174,7 +173,7 @@ async def main():
 
     group_notifications = get_value("group_notifications_disabled")
     if group_notifications is None:
-        set_value("group_notifications_disabled", json.dumps(False))
+        set_value("group_notifications_disabled", json.dumps({}))
 
     group_chats = get_value("group_chats")
     if group_chats is None:
@@ -208,7 +207,7 @@ async def main():
 
     video_notifications = get_value("video_notifications_disabled")
     if video_notifications is None:
-        set_value("video_notifications_disabled", json.dumps(False))
+        set_value("video_notifications_disabled", json.dumps({}))
 
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 

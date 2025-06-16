@@ -107,8 +107,8 @@ def init_db():
         default_values = {
             "bot_users": ["611511159"],
             "users_with_reminders": ["611511159", "1564008807"],
-            "video_notifications_disabled": [],
-            "group_notifications_disabled": [],
+            "video_notifications_disabled": {},
+            "group_notifications_disabled": {},
             "group_chats": [],
             "sent_reminders": {"2025-02-14": []},
             "daily_reminder_sent": False,
