@@ -426,6 +426,9 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         return escape_markdown(default, version=2)
 
 async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
+    # Ensure the table exists before any DB operations
+    create_birthday_greetings_table()
+
     now = datetime.now(berlin_tz)
     today = now.date()
     current_hour = now.hour
