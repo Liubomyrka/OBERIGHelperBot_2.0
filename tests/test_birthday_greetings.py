@@ -138,3 +138,24 @@ def test_check_birthday_greetings_skips_if_already_sent(monkeypatch, stub_depend
 
     context.bot.send_message.assert_not_awaited()
 
+
+def test_inflect_to_dative(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    assert module.inflect_to_dative('Галина') == 'Галині'
+
+
+def test_fallback_uses_dative(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    monkeypatch.setattr(
+        module.openai.chat.completions,
+        'create',
+        lambda **kw: (_ for _ in ()).throw(module.openai.OpenAIError('err')),
+    )
+
+    greeting = asyncio.run(module.generate_birthday_greeting('Галина', 'morning'))
+    assert 'Галині' in greeting
+

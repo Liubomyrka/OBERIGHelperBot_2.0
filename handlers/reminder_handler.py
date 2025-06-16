@@ -333,13 +333,43 @@ async def startup_birthday_check(context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"🔄 Запуск перевірки днів народження при старті бота ({greeting_type})")
     await check_birthday_greetings(context)
 
+
+def inflect_to_dative(name: str) -> str:
+    """Return the Ukrainian name inflected to the dative case."""
+    try:
+        from pymorphy3 import MorphAnalyzer  # type: ignore
+
+        morph = MorphAnalyzer(lang="uk")
+        parsed = morph.parse(name)
+        for p in parsed:
+            if {"Name", "Surn"} & set(p.tag):
+                d = p.inflect({"datv"})
+                if d:
+                    result = d.word.capitalize()
+                    return result
+    except Exception:
+        pass
+
+    lower = name.lower()
+    if lower.endswith("я"):
+        return name[:-1] + "ї"
+    if lower.endswith("а"):
+        return name[:-1] + "і"
+    if lower.endswith("й"):
+        return name[:-1] + "ю"
+    if lower.endswith("о"):
+        return name[:-1] + "у"
+    if lower.endswith("ь"):
+        return name[:-1] + "ю"
+    return name + "у"
+
 async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
     try:
-        # Оновлений промпт: прибираємо "до 80 токенів" і додаємо вимогу завершеності
+        dative_name = inflect_to_dative(name)
         prompt = f"""
-        Ти — OBERIG, помічник хору «Оберіг». Створи коротке, унікальне привітання з днем народження, 
-        адресоване групі (наприклад, "Друзі, чи знаєте ви...", "Наші любі хористи...", "Сьогодні особливий день...") 
-        із згадкою іменинника {name} та музичною тематикою. 
+        Ти — OBERIG, помічник хору «Оберіг». Створи коротке, унікальне привітання з днем народження,
+        адресоване групі (наприклад, "Друзі, чи знаєте ви...", "Наші любі хористи...", "Сьогодні особливий день...")
+        із згадкою іменинника {dative_name} та музичною тематикою.
         Для {time_of_day}:
         - morning (9:00–12:00): радісне, енергійне з побажанням гарного дня.
         - evening (20:00–23:00): тепле з сподіванням, що день пройшов чудово.
@@ -391,7 +421,7 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         logger.error(f"❌ Помилка при генерації привітання для {name}: {e}")
         default = (
             f"🎵 Друзі, чи знаєте ви, що у нас є іменинник? "
-            f"Вітаємо тебе, {name}, з днем народження! Нехай мелодії радують тебе! 😊 #Оберіг #ДеньНародження"
+            f"Вітаємо тебе, {dative_name}, з днем народження! Нехай мелодії радують тебе! 😊 #Оберіг #ДеньНародження"
         )
         return escape_markdown(default, version=2)
 
@@ -574,5 +604,6 @@ __all__ = [
     "startup_daily_reminder",
     "send_event_reminders", "check_birthday_greetings", "schedule_birthday_greetings",
     "create_birthday_greetings_table", "startup_birthday_check",
-    "cleanup_old_birthday_greetings", "schedule_cleanup"
+    "cleanup_old_birthday_greetings", "schedule_cleanup",
+    "inflect_to_dative",
 ]
