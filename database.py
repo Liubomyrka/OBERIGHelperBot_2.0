@@ -176,6 +176,24 @@ def migrate_database():
                 cursor.execute("ALTER TABLE sent_notifications ADD COLUMN message_id TEXT;")
                 logger.info("✅ Додано колонку message_id до sent_notifications")
 
+            # 🔧 Створюємо або оновлюємо таблицю birthday_greetings
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS birthday_greetings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id TEXT NOT NULL,
+                    date_sent TEXT NOT NULL,
+                    greeting_type TEXT NOT NULL CHECK(greeting_type IN ('morning', 'evening')),
+                    greeting_text TEXT
+                )
+                """
+            )
+            cursor.execute("PRAGMA table_info(birthday_greetings);")
+            columns = [col[1] for col in cursor.fetchall()]
+            if "greeting_text" not in columns:
+                cursor.execute("ALTER TABLE birthday_greetings ADD COLUMN greeting_text TEXT")
+                logger.info("✅ Додано колонку greeting_text до birthday_greetings")
+
             # 🔧 Створюємо таблицю event_reminder_hashes, якщо вона ще не існує
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS event_reminder_hashes (
