@@ -26,11 +26,19 @@ NOTY_FOLDER_ID = os.getenv(
 )  # Використовуємо значення з .env.new або дефолт
 
 
-async def list_sheets(update: Update = None, context: ContextTypes.DEFAULT_TYPE = None):
-    """
-    Отримує список нот із Google Drive і кешує їх.
-    """
+async def list_sheets(
+    update: Update | None = None,
+    context: ContextTypes.DEFAULT_TYPE | None = None,
+    use_cache: bool = True,
+):
+    """Отримує список нот із Google Drive, використовуючи кеш за можливістю."""
     try:
+        if use_cache:
+            cached = get_value("sheet_music_cache")
+            if cached:
+                logger.info("Список нот взято з кешу бази даних")
+                return json.loads(cached)
+
         credentials = service_account.Credentials.from_service_account_file(
             GOOGLE_CREDENTIALS, scopes=SCOPES
         )
@@ -83,52 +91,6 @@ async def list_sheets(update: Update = None, context: ContextTypes.DEFAULT_TYPE 
         return {}
 
 
-async def search_sheets(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, keyword: str
-):
-    """
-    Шукає ноти за ключовим словом у Google Drive.
-    """
-    try:
-        credentials = service_account.Credentials.from_service_account_file(
-            GOOGLE_CREDENTIALS, scopes=SCOPES
-        )
-        service = build("drive", "v3", credentials=credentials)
-
-        # Розширена логіка пошуку з підтримкою часткового збігу
-        query = f"mimeType='application/pdf' and '{NOTY_FOLDER_ID}' in parents and (name contains '{keyword}')"
-        logger.debug(f"Пошук нот за запитом: {query}")
-
-        results = (
-            service.files()
-            .list(
-                q=query,
-                fields="files(id, name, parents)",
-                pageSize=10,  # Обмежуємо кількість результатів
-            )
-            .execute()
-        )
-
-        items = results.get("files", [])
-
-        if not items:
-            await update.message.reply_text(
-                f"🎵 Вибач, не знайшов нот за запитом '{keyword}'. Можливо, спробуєш інакше? #Оберіг 😊"
-            )
-            return
-
-        # Формуємо повідомлення зі знайденими нотами
-        response = "🎼 Знайшов ноти:\n\n"
-        for idx, item in enumerate(items, 1):
-            response += f"{idx}. {item['name']}\n"
-
-        response += "\nЩоб отримати конкретну ноту, використай команду /get_sheet і номер з цього списку. #Оберіг 🌟"
-
-        await update.message.reply_text(response)
-    except HttpError as error:
-        logger.error(f"Помилка при отриманні списку нот з Google Drive: {error}")
-        await update.message.reply_text("❌ *Помилка з нотами 😕* Спробуй пізніше! ⬇️")
-        return
 
 
 async def send_sheet(update: Update, context: ContextTypes.DEFAULT_TYPE, file_id: str):
@@ -183,4 +145,4 @@ async def send_sheet(update: Update, context: ContextTypes.DEFAULT_TYPE, file_id
         )
 
 
-__all__ = ["list_sheets", "search_sheets", "send_sheet"]
+__all__ = ["list_sheets", "send_sheet"]
