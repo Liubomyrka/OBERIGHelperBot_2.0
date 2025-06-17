@@ -10,7 +10,7 @@ from .user_utils import auto_add_user
 async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показує початкове меню нот із клавіатурою."""
     chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
+    if update.effective_chat.type != "private":
         return
 
     keyboard = [
@@ -19,24 +19,19 @@ async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-    if chat_id == "-1001906486581":
-        await context.bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=update.message.message_id - 1,
-            reply_markup=reply_markup,
-        )
-    else:
-        message = await update.message.reply_text(
-            "🎵 *Обери ноти внизу* ⬇️", parse_mode="Markdown", reply_markup=reply_markup
-        )
-        save_bot_message(chat_id, message.message_id, "general")
+    message = await update.message.reply_text(
+        "🎵 *Обери ноти внизу* ⬇️",
+        parse_mode="Markdown",
+        reply_markup=reply_markup,
+    )
+    save_bot_message(chat_id, message.message_id, "general")
     logger.info("✅ Відображено початкове меню нот")
 
 
 async def show_all_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показує список усіх нот із клавіатурою."""
     chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
+    if update.effective_chat.type != "private":
         return
 
     sheets = await list_sheets(update, context)
@@ -57,58 +52,18 @@ async def show_all_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-    if chat_id == "-1001906486581":
-        await context.bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=update.message.message_id - 1,
-            reply_markup=reply_markup,
-        )
-    else:
-        message = await update.message.reply_text(
-            "🎵 *Вибери ноти внизу* ⬇️", parse_mode="Markdown", reply_markup=reply_markup
-        )
-        save_bot_message(chat_id, message.message_id, "general")
+    message = await update.message.reply_text(
+        "🎵 *Вибери ноти внизу* ⬇️",
+        parse_mode="Markdown",
+        reply_markup=reply_markup,
+    )
+    save_bot_message(chat_id, message.message_id, "general")
     logger.info("✅ Відображено список усіх нот")
 
 
 async def show_notes_by_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показує список нот, відсортованих за назвою, із клавіатурою."""
-    chat_id = str(update.effective_chat.id)
-    if chat_id != "-1001906486581" and update.effective_chat.type != "private":
-        return
-
-    sheets = await list_sheets(update, context)
-    if not sheets:
-        await update.message.reply_text("❌ *Помилка з нотами 😕* Спробуй пізніше! ⬇️")
-        return
-
-    keyboard = []
-    all_sheets = []
-    for category, items in sheets.items():
-        all_sheets.extend(items)
-    all_sheets.sort(key=lambda x: x["name"].lower())
-
-    for sheet in all_sheets:
-        keyboard.append([KeyboardButton(f"📃 {sheet['name']}")])
-
-    keyboard.append([KeyboardButton("🔙 Меню нот")])
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
-    if chat_id == "-1001906486581":
-        await context.bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=update.message.message_id - 1,
-            reply_markup=reply_markup,
-        )
-    else:
-        message = await update.message.reply_text(
-            "🎵 *Вибери ноти внизу* ⬇️ (за назвою)",
-            parse_mode="Markdown",
-            reply_markup=reply_markup,
-        )
-        save_bot_message(chat_id, message.message_id, "general")
-    logger.info("✅ Відображено список нот, відсортованих за назвою")
+    """Застаріла функція, що викликає ``show_all_notes``."""
+    await show_all_notes(update, context)
 
 
 async def get_sheet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -161,6 +116,5 @@ async def get_sheet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 __all__ = [
     "show_notes_menu",
     "show_all_notes",
-    "show_notes_by_name",
     "get_sheet_command",
 ]
