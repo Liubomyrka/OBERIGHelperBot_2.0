@@ -9,6 +9,8 @@ from utils.calendar_utils import (
     get_latest_youtube_video_cached,
     get_most_popular_youtube_video_cached,
     get_top_10_videos_cached,
+    get_past_events_cached,
+    get_last_event,
 )
 from database import get_value, set_value
 from datetime import datetime
@@ -207,6 +209,44 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             ]
         )
 
+        # \u041e\u0431\u0440\u043e\u0431\u043b\u044f\u0454\u043c\u043e \u0437\u0430\u043f\u0438\u0442 \u043f\u0440\u043e \u043c\u0438\u043d\u0443\u043b\u0456 \u043f\u043e\u0434\u0456\u0457
+        past_events = None
+        last_event_info = ""
+        past_count_info = ""
+
+        if any(word in user_message for word in ["останн", "минул"]):
+            past_events = get_past_events_cached(max_results=50)
+            # \u0441\u043f\u0440\u043e\u0431\u0443\u0454\u043c\u043e \u0432\u0438\u0434\u0456\u043b\u0438\u0442\u0438 \u043a\u043b\u044e\u0447\u043e\u0432\u0435 \u0441\u043b\u043e\u0432\u043e \u043f\u0456\u0441\u043b\u044f "\u0432 "
+            import re
+
+            m = re.search(r"[вв]\s+([\w\s\u0400-\u04FF]+)", user_message)
+            keyword = m.group(1).strip() if m else ""
+            event = get_last_event(keyword) if keyword else (past_events[0] if past_events else None)
+            if event:
+                last_event_info = f"{event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
+
+        if "скільки" in user_message and "раз" in user_message:
+            if past_events is None:
+                past_events = get_past_events_cached(max_results=50)
+            import re
+
+            m = re.search(r"[вв]\s+([\w\s\u0400-\u04FF]+)", user_message)
+            keyword = m.group(1).strip() if m else ""
+            if keyword and past_events:
+                count = sum(
+                    1
+                    for ev in past_events
+                    if keyword.lower()
+                    in " ".join(
+                        [
+                            ev.get("summary", ""),
+                            ev.get("description", ""),
+                            ev.get("location", ""),
+                        ]
+                    ).lower()
+                )
+                past_count_info = f"{keyword}: {count}"
+
         video_context = (
             f"🎥 Найновіше: {latest_video}\n"
             f"⭐ Найпопулярніше: {popular_video}\n"
@@ -218,18 +258,18 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             "🌐 Facebook: https://www.facebook.com/profile.php?id=100094519583534"
         )
 
-        # Скорочений dynamic_prompt для мінімізації токенів
-        dynamic_prompt = f"""
-{OBERIG_SYSTEM_PROMPT}
-
-Дані для відповіді:
-- Події: {calendar_context}
-- Репетиції: {rehearsal_events}
-- Виступи: {performance_events}
-- Дні народження: {birthday_events}
-- YouTube: {video_context}
-- Соцмережі: {social_context}
-"""
+        # \u0421\u0442\u0432\u043e\u0440\u044e\u0454\u043c\u043e dynamic_prompt \u0437 \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u043c \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u043e\u043c
+        dynamic_prompt = f"{OBERIG_SYSTEM_PROMPT}\n\nДані для відповіді:"
+        dynamic_prompt += f"\n- Події: {calendar_context}"
+        dynamic_prompt += f"\n- Репетиції: {rehearsal_events}"
+        dynamic_prompt += f"\n- Виступи: {performance_events}"
+        dynamic_prompt += f"\n- Дні народження: {birthday_events}"
+        if last_event_info:
+            dynamic_prompt += f"\n- Остання подія: {last_event_info}"
+        if past_count_info:
+            dynamic_prompt += f"\n- Лічильник подій: {past_count_info}"
+        dynamic_prompt += f"\n- YouTube: {video_context}"
+        dynamic_prompt += f"\n- Соцмережі: {social_context}"
 
         # Формуємо контекст для ChatGPT з мінімальною історією
         chat_history_str = get_value(f"oberig_chat_history_{user_id}") or "[]"
