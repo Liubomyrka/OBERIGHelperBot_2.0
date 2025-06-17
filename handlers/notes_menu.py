@@ -14,7 +14,7 @@ async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     keyboard = [
-        [KeyboardButton("📋 Всі ноти"), KeyboardButton("🔤 За назвою")],
+        [KeyboardButton("📋 Всі ноти")],
         [KeyboardButton("🔍 За ключовим словом"), KeyboardButton("🔙 Головне меню")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -59,11 +59,6 @@ async def show_all_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     save_bot_message(chat_id, message.message_id, "general")
     logger.info("✅ Відображено список усіх нот")
-
-
-async def show_notes_by_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Застаріла функція, що викликає ``show_all_notes``."""
-    await show_all_notes(update, context)
 
 
 async def get_sheet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

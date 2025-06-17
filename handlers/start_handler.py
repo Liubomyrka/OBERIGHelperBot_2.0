@@ -277,7 +277,6 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📊 Аналітика за 30 днів",
         "📈 Статистика використання",
         "📋 Всі ноти",
-        "🔤 За назвою",
         "🔍 За ключовим словом",
         "Помічник",
         "🔙 Меню нот",
@@ -399,9 +398,6 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "📋 Всі ноти" and chat_type == "private":
                 await show_all_notes(update, context)
                 logger.info("✅ Натиснуто кнопку '📋 Всі ноти'")
-            elif text == "🔤 За назвою" and chat_type == "private":
-                await show_all_notes(update, context)
-                logger.info("✅ Натиснуто кнопку '🔤 За назвою'")
             elif text == "🔍 За ключовим словом" and chat_type == "private":
                 message = await update.message.reply_text(
                     "🔍 *Введи слово для пошуку нот* ⬇️", parse_mode="Markdown"
