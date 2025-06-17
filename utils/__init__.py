@@ -65,12 +65,16 @@ async def call_openai_assistant(
                 asyncio.to_thread(openai.beta.threads.create), timeout=timeout
             )
             for msg in messages:
+                role = msg.get("role", "user")
+                if role not in {"user", "assistant"}:
+                    # Assistants API supports only 'user' and 'assistant' roles
+                    role = "user"
                 await asyncio.wait_for(
                     asyncio.to_thread(
                         openai.beta.threads.messages.create,
                         thread_id=thread.id,
-                        role=msg["role"],
-                        content=msg["content"],
+                        role=role,
+                        content=msg.get("content", ""),
                     ),
                     timeout=timeout,
                 )
