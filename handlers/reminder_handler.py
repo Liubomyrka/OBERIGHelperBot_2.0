@@ -17,9 +17,14 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-from utils import init_openai_api, call_openai_chat
+from utils import (
+    init_openai_api,
+    call_openai_chat,
+    call_openai_assistant,
+    get_openai_assistant_id,
+)
 
-init_openai_api()
+ASSISTANT_ID = init_openai_api()
 TEST_CHAT_ID = os.getenv("REMINDER_TEST_CHAT_ID")
 berlin_tz = pytz.timezone(TIMEZONE)
 
@@ -374,11 +379,17 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
             "morning – енергійний, evening – теплий. Завершуй текст крапкою або знаком оклику."
         )
 
-        greeting = await call_openai_chat(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=150,
-            temperature=0.9,
-        )
+        if ASSISTANT_ID:
+            greeting = await call_openai_assistant(
+                messages=[{"role": "user", "content": prompt}],
+                assistant_id=ASSISTANT_ID,
+            )
+        else:
+            greeting = await call_openai_chat(
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=150,
+                temperature=0.9,
+            )
 
         if greeting and greeting[-1] not in [".", "!", "?" ]:
             greeting += "!"

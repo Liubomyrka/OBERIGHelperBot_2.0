@@ -49,7 +49,21 @@ def stub_dependencies(monkeypatch):
     http_mod.MediaIoBaseDownload = object
     monkeypatch.setitem(sys.modules, 'googleapiclient.http', http_mod)
 
-    monkeypatch.setitem(sys.modules, 'openai', types.SimpleNamespace(api_key=None))
+    openai_mod = types.SimpleNamespace(api_key=None)
+    openai_mod.beta = types.SimpleNamespace(
+        threads=types.SimpleNamespace(
+            create=lambda: types.SimpleNamespace(id='t'),
+            messages=types.SimpleNamespace(
+                create=lambda **kw: None,
+                list=lambda **kw: types.SimpleNamespace(data=[]),
+            ),
+            runs=types.SimpleNamespace(
+                create=lambda **kw: types.SimpleNamespace(id='r', status='queued'),
+                retrieve=lambda **kw: types.SimpleNamespace(id='r', status='completed'),
+            ),
+        )
+    )
+    monkeypatch.setitem(sys.modules, 'openai', openai_mod)
     dotenv_mod = types.ModuleType('dotenv')
     dotenv_mod.load_dotenv = lambda *a, **kw: None
     monkeypatch.setitem(sys.modules, 'dotenv', dotenv_mod)

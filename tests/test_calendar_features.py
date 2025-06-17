@@ -16,6 +16,19 @@ def stub_dependencies(monkeypatch, tmp_path):
     openai_mod = types.ModuleType('openai')
     openai_mod.api_key = None
     openai_mod.OpenAIError = Exception
+    openai_mod.beta = types.SimpleNamespace(
+        threads=types.SimpleNamespace(
+            create=lambda: types.SimpleNamespace(id='t'),
+            messages=types.SimpleNamespace(
+                create=lambda **kw: None,
+                list=lambda **kw: types.SimpleNamespace(data=[]),
+            ),
+            runs=types.SimpleNamespace(
+                create=lambda **kw: types.SimpleNamespace(id='r', status='queued'),
+                retrieve=lambda **kw: types.SimpleNamespace(id='r', status='completed'),
+            ),
+        )
+    )
     monkeypatch.setitem(sys.modules, 'openai', openai_mod)
 
     dotenv_mod = types.ModuleType('dotenv')
