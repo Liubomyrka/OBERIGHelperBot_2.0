@@ -5,16 +5,16 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from utils.logger import logger
 from utils.calendar_utils import (
-    get_calendar_events,
-    get_latest_youtube_video,
-    get_most_popular_youtube_video,
-    get_top_10_videos,  # Оновлюємо імпорт
+    get_calendar_events_cached,
+    get_latest_youtube_video_cached,
+    get_most_popular_youtube_video_cached,
+    get_top_10_videos_cached,
 )
 from database import get_value, set_value
 from datetime import datetime
 from handlers.drive_utils import list_sheets, send_sheet
 from handlers.notes_utils import search_notes
-from utils import init_openai_api
+from utils import init_openai_api, call_openai_chat
 
 # Налаштування API-ключа OpenAI
 init_openai_api()
@@ -153,22 +153,18 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
 
         # Завантажуємо дані залежно від ключових слів
         if any(keyword in user_message for keyword in calendar_keywords):
-            events = get_calendar_events(
-                max_results=50
-            )  # Зменшено до 50 для економії токенів
+            events = get_calendar_events_cached(max_results=50)
         if any(keyword in user_message for keyword in youtube_keywords):
-            latest_video = get_latest_youtube_video()
-            popular_video = get_most_popular_youtube_video()
-            top_videos = get_top_10_videos()  # Оновлюємо на get_top_10_videos
+            latest_video = get_latest_youtube_video_cached()
+            popular_video = get_most_popular_youtube_video_cached()
+            top_videos = get_top_10_videos_cached()
 
         # Для загальних запитів завантажуємо мінімальні дані
         if not events and not any([latest_video, popular_video, top_videos]):
-            events = get_calendar_events(
-                max_results=30
-            )  # Ще менше для загальних запитів
-            latest_video = get_latest_youtube_video()
-            popular_video = get_most_popular_youtube_video()
-            top_videos = get_top_10_videos()  # Оновлюємо на get_top_10_videos
+            events = get_calendar_events_cached(max_results=30)
+            latest_video = get_latest_youtube_video_cached()
+            popular_video = get_most_popular_youtube_video_cached()
+            top_videos = get_top_10_videos_cached()
 
         # Шукаємо події за ключовими словами, обмежуючи кількість
         def search_events(keyword, events_list=None, limit=10):  # Зменшено ліміт до 10
@@ -245,13 +241,11 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
         messages.append({"role": "user", "content": user_message})
 
         # Запит до ChatGPT з мінімальними токенами для відповіді
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",  # Економічна модель
+        bot_response = await call_openai_chat(
             messages=messages,
-            max_tokens=200,  # Зменшено до 200 для економії
+            max_tokens=200,
+            temperature=0.9,
         )
-
-        bot_response = response.choices[0].message.content.strip()
         # Додаємо емоджі, хештеги, смайли та прикраси
         bot_response = (
             f"🎵 {bot_response} 😊 #Оберіг ✨\n🌟 Хочеш дізнатися більше? 🙂 #Хор"
