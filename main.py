@@ -234,16 +234,7 @@ async def main():
         BotCommand("delete_recent", "Видалити за 30 хв (адмін)"),
     ]
 
-    group_commands = [
-        BotCommand(
-            "start", "Запустити бота"
-        )  # Лише одна команда для всіх груп, окрім -1001906486581
-    ]
-
-    special_group_commands = [
-        BotCommand("start", "Запустити бота"),
-        BotCommand("notes", "Меню нот"),  # Додаткові команди для -1001906486581
-    ]
+    group_commands = [BotCommand("start", "Запустити бота")]
 
     admin_commands = [
         BotCommand("start", "Запустити бота"),
@@ -280,13 +271,6 @@ async def main():
             commands=group_commands, scope=BotCommandScopeAllGroupChats()
         )
         logger.info("Встановлено команди для всіх групових чатів (лише /start)")
-        await application.bot.set_my_commands(
-            commands=special_group_commands,
-            scope=BotCommandScopeChat(chat_id=-1001906486581),
-        )
-        logger.info(
-            "Встановлено команди для спеціального групового чату -1001906486581"
-        )
         if admin_id:
             await application.bot.set_my_commands(
                 commands=admin_commands,
@@ -362,9 +346,6 @@ async def main():
             "delete_recent", delete_recent, filters=filters.ChatType.PRIVATE
         ),
         MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, text_menu_handler),
-        MessageHandler(
-            filters.TEXT & filters.Chat(chat_id=-1001906486581), text_menu_handler
-        ),
     ]
 
     for handler in handlers:

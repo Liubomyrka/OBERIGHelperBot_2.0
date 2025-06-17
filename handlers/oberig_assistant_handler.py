@@ -12,7 +12,8 @@ from utils.calendar_utils import (
 )
 from database import get_value, set_value
 from datetime import datetime
-from handlers.drive_utils import list_sheets, search_sheets, send_sheet
+from handlers.drive_utils import list_sheets, send_sheet
+from handlers.notes_utils import search_notes
 from utils import init_openai_api
 
 # Налаштування API-ключа OpenAI
@@ -78,7 +79,7 @@ async def search_drive_files(
     """
     try:
         # Виклик існуючої функції пошуку нот
-        await search_sheets(update, context, query)
+        await search_notes(update, context, keyword=query)
     except Exception as e:
         logger.error(f"Помилка пошуку файлів: {e}")
         await update.message.reply_text(

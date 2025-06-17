@@ -39,7 +39,7 @@ from handlers.drive_utils import (
 )
 from handlers.notes_utils import search_notes
 
-from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
+from .notes_menu import show_notes_menu, show_all_notes
 from .youtube_menu import (
     show_youtube_menu,
     latest_video_command,
@@ -135,16 +135,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             save_bot_message(chat_id, message.message_id, "general")
             logger.info("✅ Команда /start виконана успішно у приватному чаті.")
-        elif chat_id == "-1001906486581":
-            keyboard = [[KeyboardButton("Помічник"), KeyboardButton("🎵 Ноти")]]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-            message = await update.message.reply_text(
-                "🎵 *Обери ноти внизу* ⬇️",
-                parse_mode="Markdown",
-                reply_markup=reply_markup,
-            )
-            save_bot_message(chat_id, message.message_id, "general")
-            logger.info("✅ Відображено початкове меню в групі -1001906486581")
         else:
             try:
                 all_chats = get_value("group_chats")
@@ -220,13 +210,13 @@ async def redirect_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await auto_add_user(update, context)
     chat_id = str(update.effective_chat.id)
-    from .notes_menu import show_notes_menu, show_all_notes, show_notes_by_name
+    from .notes_menu import show_notes_menu, show_all_notes
     from .youtube_menu import show_youtube_menu, latest_video_command, most_popular_video_command, top_10_videos_command
     chat_type = update.effective_chat.type
     text = update.message.text
     logger.info(f"🔄 Обробка текстової кнопки або повідомлення: {text}")
 
-    if chat_type != "private" and chat_id != "-1001906486581":
+    if chat_type != "private":
         if text == "Помічник":
             await redirect_to_private(update, context)
         return
@@ -368,17 +358,6 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "🔙 Головне меню":
                 if chat_type == "private":
                     await show_main_menu(update, context)
-                elif chat_id == "-1001906486581":
-                    keyboard = [[KeyboardButton("Помічник"), KeyboardButton("🎵 Ноти")]]
-                    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-                    await context.bot.edit_message_reply_markup(
-                        chat_id=chat_id,
-                        message_id=update.message.message_id - 1,
-                        reply_markup=reply_markup,
-                    )
-                    logger.info(
-                        "✅ Оновлено клавіатуру до головного меню в групі -1001906486581"
-                    )
             elif text == "🗑️ Видалити повідомлення":
                 if await is_admin(update.effective_user.id):
                     await delete_messages(update, context)
@@ -411,43 +390,39 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     save_bot_message(chat_id, message.message_id, "general")
                     logger.info("✅ Натиснуто кнопку '📈 Статистика використання'")
-            elif text == "Помічник" and chat_id == "-1001906486581":
+            elif text == "Помічник":
                 await redirect_to_private(update, context)
-                logger.info("✅ Натиснуто кнопку 'Помічник' у групі -1001906486581")
-            elif text == "🎵 Ноти" and (
-                chat_type == "private" or chat_id == "-1001906486581"
-            ):
+                logger.info("✅ Натиснуто кнопку 'Помічник' у групі")
+            elif text == "🎵 Ноти" and chat_type == "private":
                 await show_notes_menu(update, context)
                 logger.info("✅ Натиснуто кнопку '🎵 Ноти'")
-            elif text == "📋 Всі ноти" and (
-                chat_type == "private" or chat_id == "-1001906486581"
-            ):
+            elif text == "📋 Всі ноти" and chat_type == "private":
                 await show_all_notes(update, context)
                 logger.info("✅ Натиснуто кнопку '📋 Всі ноти'")
-            elif text == "🔤 За назвою" and (
-                chat_type == "private" or chat_id == "-1001906486581"
-            ):
-                await show_notes_by_name(update, context)
+            elif text == "🔤 За назвою" and chat_type == "private":
+                await show_all_notes(update, context)
                 logger.info("✅ Натиснуто кнопку '🔤 За назвою'")
-            elif text == "🔍 За ключовим словом" and (
-                chat_type == "private" or chat_id == "-1001906486581"
-            ):
+            elif text == "🔍 За ключовим словом" and chat_type == "private":
                 message = await update.message.reply_text(
                     "🔍 *Введи слово для пошуку нот* ⬇️", parse_mode="Markdown"
                 )
                 save_bot_message(chat_id, message.message_id, "general")
                 context.user_data["awaiting_keyword"] = True
                 logger.info("✅ Натиснуто кнопку '🔍 За ключовим словом'")
-            elif text == "🔙 Меню нот" and (
-                chat_type == "private" or chat_id == "-1001906486581"
-            ):
+            elif text == "➡️ Ще результати" and chat_type == "private":
+                await search_notes(
+                    update,
+                    context,
+                    keyword=context.user_data.get("last_search_keyword"),
+                    next_page=True,
+                )
+                logger.info("✅ Показано наступні результати пошуку нот")
+            elif text == "🔙 Меню нот" and chat_type == "private":
                 await show_notes_menu(update, context)
                 logger.info("✅ Повернення до меню нот")
 
         # Обробка лише тексту, який не пов’язаний із нотами або стандартними командами
-        elif context.user_data.get("awaiting_keyword") and (
-            chat_type == "private" or chat_id == "-1001906486581"
-        ):
+        elif context.user_data.get("awaiting_keyword") and chat_type == "private":
             # Передаємо текст як ключове слово для пошуку нот
             await search_notes(update, context)
             logger.info(f"✅ Виконується пошук нот за ключовим словом: {text}")
@@ -530,7 +505,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "redirect_private":
         await redirect_to_private(update, context)
-        logger.info("✅ Натиснуто кнопку 'Помічник' у групі -1001906486581")
+        logger.info("✅ Натиснуто кнопку 'Помічник' у групі")
     elif data == "top_10_prev":
         # Переходимо на попередню сторінку
         context.user_data["top_10_page"] = context.user_data.get("top_10_page", 0) - 1
