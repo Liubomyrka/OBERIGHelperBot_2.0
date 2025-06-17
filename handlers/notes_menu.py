@@ -61,6 +61,13 @@ async def show_all_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("✅ Відображено список усіх нот")
 
 
+
+async def show_notes_by_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Застаріла функція, що викликає ``show_all_notes``."""
+    await show_all_notes(update, context)
+
+
+
 async def get_sheet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробляє команду /get_sheet для надсилання нот з Google Drive."""
     await auto_add_user(update, context)
