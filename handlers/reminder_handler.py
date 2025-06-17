@@ -115,7 +115,7 @@ async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
     if now.hour < 8:
-        logger.info("\ud83d\udd07 Нічний режим активний, нагадування не надсилається")
+        logger.info("🔇 Нічний режим активний, нагадування не надсилається")
         return
 
     current_date = now.date()
@@ -200,7 +200,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
 async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now(berlin_tz)
     if now.hour < 8:
-        logger.info("\ud83d\udd07 Нічний режим: щоденне нагадування буде надіслано після 08:00")
+        logger.info("🔇 Нічний режим: щоденне нагадування буде надіслано після 08:00")
         return
     already_sent = get_value('daily_reminder_sent')
     today = now.date().isoformat()
