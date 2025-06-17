@@ -29,7 +29,36 @@ def stub_dependencies(monkeypatch):
     openai_mod = types.ModuleType('openai')
     openai_mod.api_key = None
     openai_mod.OpenAIError = Exception
-    openai_mod.chat = types.SimpleNamespace(completions=types.SimpleNamespace(create=lambda **kw: types.SimpleNamespace(choices=[types.SimpleNamespace(message=msg)])))
+    openai_mod.chat = types.SimpleNamespace(
+        completions=types.SimpleNamespace(
+            create=lambda **kw: types.SimpleNamespace(
+                choices=[types.SimpleNamespace(message=msg)]
+            )
+        )
+    )
+    openai_mod.beta = types.SimpleNamespace(
+        threads=types.SimpleNamespace(
+            create=lambda: types.SimpleNamespace(id='t'),
+            messages=types.SimpleNamespace(
+                create=lambda **kw: None,
+                list=lambda **kw: types.SimpleNamespace(
+                    data=[
+                        types.SimpleNamespace(
+                            content=[
+                                types.SimpleNamespace(
+                                    text=types.SimpleNamespace(value='Вітаємо!')
+                                )
+                            ]
+                        )
+                    ]
+                ),
+            ),
+            runs=types.SimpleNamespace(
+                create=lambda **kw: types.SimpleNamespace(id='r', status='queued'),
+                retrieve=lambda **kw: types.SimpleNamespace(id='r', status='completed'),
+            ),
+        )
+    )
     monkeypatch.setitem(sys.modules, 'openai', openai_mod)
 
     # other libs
@@ -51,6 +80,8 @@ def stub_dependencies(monkeypatch):
     async def fake_call(*a, **kw):
         return 'Вітаємо!'
     utils_mod.call_openai_chat = fake_call
+    utils_mod.call_openai_assistant = fake_call
+    utils_mod.get_openai_assistant_id = lambda: None
     monkeypatch.setitem(sys.modules, 'utils', utils_mod)
 
     # in-memory database

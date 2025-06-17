@@ -19,10 +19,15 @@ from database import get_value, set_value
 from datetime import datetime
 from handlers.drive_utils import list_sheets, send_sheet
 from handlers.notes_utils import search_notes
-from utils import init_openai_api, call_openai_chat
+from utils import (
+    init_openai_api,
+    call_openai_chat,
+    call_openai_assistant,
+    get_openai_assistant_id,
+)
 
 # Налаштування API-ключа OpenAI
-init_openai_api()
+ASSISTANT_ID = init_openai_api()
 
 # Скорочений системний контекст для зменшення токенів
 OBERIG_SYSTEM_PROMPT = """
@@ -306,12 +311,17 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
         )  # Зменшено до 3 повідомлень для економії токенів
         messages.append({"role": "user", "content": user_message})
 
-        # Запит до ChatGPT з мінімальними токенами для відповіді
-        bot_response = await call_openai_chat(
-            messages=messages,
-            max_tokens=200,
-            temperature=0.9,
-        )
+        # Запит до ChatGPT або асистента з мінімальними токенами для відповіді
+        if ASSISTANT_ID:
+            bot_response = await call_openai_assistant(
+                messages=messages, assistant_id=ASSISTANT_ID
+            )
+        else:
+            bot_response = await call_openai_chat(
+                messages=messages,
+                max_tokens=200,
+                temperature=0.9,
+            )
         # Додаємо емоджі, хештеги, смайли та прикраси
         bot_response = (
             f"🎵 {bot_response} 😊 #Оберіг ✨\n🌟 Хочеш дізнатися більше? 🙂 #Хор"

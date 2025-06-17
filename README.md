@@ -24,7 +24,11 @@
    - `YOUTUBE_API_KEY` – ключ API YouTube
    - `OBERIG_PLAYLIST_ID` – ID плейліста хору
    - `ADMIN_CHAT_ID` – ID адміністратора
+   - `OPENAI_API_KEY` – ключ для доступу до OpenAI
+   - `OPENAI_ASSISTANT_ID` – ID створеного асистента (необов'язково)
    - `TIMEZONE` – часовий пояс (необовʼязково, за замовчуванням `Europe/Berlin`)
+   
+   Бот зчитує ці значення з файла `.env` при запуску.
 3. Встановіть залежності:
 
 ```bash
