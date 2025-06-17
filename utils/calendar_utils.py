@@ -63,6 +63,26 @@ def get_calendar_events(max_results=150):
         return []
 
 
+def get_calendar_events_cached(max_results: int = 150, ttl: int = 300):
+    """Return cached calendar events if not older than ttl seconds."""
+    try:
+        cached = get_value("calendar_events_cache")
+        ts = get_value("calendar_events_cache_ts")
+        now_ts = datetime.now(BERLIN_TZ).timestamp()
+        if cached and ts and now_ts - float(ts) < ttl:
+            return json.loads(cached)
+    except Exception:
+        pass
+
+    events = get_calendar_events(max_results)
+    try:
+        set_value("calendar_events_cache", json.dumps(events))
+        set_value("calendar_events_cache_ts", str(now_ts))
+    except Exception:
+        pass
+    return events
+
+
 # Отримання подій на сьогодні
 def get_today_events():
     """
@@ -409,6 +429,24 @@ def get_top_10_videos():  # Змінюємо назву
         logger.error(f"Помилка при отриманні топ-10 відео: {e}")
         return []
 
+
+def get_latest_youtube_video_cached(ttl: int = 300):
+    from utils.youtube_utils import get_latest_video_cached
+
+    return get_latest_video_cached(ttl)
+
+
+def get_most_popular_youtube_video_cached(ttl: int = 300):
+    from utils.youtube_utils import get_most_popular_video_cached
+
+    return get_most_popular_video_cached(ttl)
+
+
+def get_top_10_videos_cached(ttl: int = 300):
+    from utils.youtube_utils import get_top_5_videos_cached
+
+    return get_top_5_videos_cached(ttl)
+
 # Перевірка нових відео в плейлісті YouTube
 async def check_new_videos():
     """
@@ -479,11 +517,15 @@ async def check_new_videos():
 # Експортуємо функції для доступу
 __all__ = [
     "get_calendar_events",
+    "get_calendar_events_cached",
     "get_today_events",
     "get_upcoming_event_reminders",
     "get_event_details",
     "get_latest_youtube_video",
     "get_most_popular_youtube_video",
     "get_top_10_videos",  # Оновлюємо
+    "get_latest_youtube_video_cached",
+    "get_most_popular_youtube_video_cached",
+    "get_top_10_videos_cached",
     "check_new_videos",
 ]

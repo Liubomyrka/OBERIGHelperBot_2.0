@@ -48,6 +48,9 @@ def stub_dependencies(monkeypatch):
     monkeypatch.setitem(sys.modules, 'utils.logger', logger_mod)
     utils_mod = types.ModuleType('utils')
     utils_mod.init_openai_api = lambda: None
+    async def fake_call(*a, **kw):
+        return 'Вітаємо!'
+    utils_mod.call_openai_chat = fake_call
     monkeypatch.setitem(sys.modules, 'utils', utils_mod)
 
     # in-memory database
@@ -150,11 +153,10 @@ def test_fallback_uses_dative(monkeypatch, stub_dependencies):
     module = importlib.import_module('handlers.reminder_handler')
     importlib.reload(module)
 
-    monkeypatch.setattr(
-        module.openai.chat.completions,
-        'create',
-        lambda **kw: (_ for _ in ()).throw(module.openai.OpenAIError('err')),
-    )
+    async def raise_error(*a, **kw):
+        raise module.openai.OpenAIError('err')
+
+    monkeypatch.setattr(module, 'call_openai_chat', raise_error)
 
     greeting = asyncio.run(module.generate_birthday_greeting('Галина', 'morning'))
     assert 'Галині' in greeting
