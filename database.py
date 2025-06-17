@@ -184,7 +184,8 @@ def migrate_database():
                     event_id TEXT NOT NULL,
                     date_sent TEXT NOT NULL,
                     greeting_type TEXT NOT NULL CHECK(greeting_type IN ('morning', 'evening')),
-                    greeting_text TEXT
+                    greeting_text TEXT,
+                    UNIQUE(event_id, date_sent, greeting_type)
                 )
                 """
             )
@@ -193,6 +194,10 @@ def migrate_database():
             if "greeting_text" not in columns:
                 cursor.execute("ALTER TABLE birthday_greetings ADD COLUMN greeting_text TEXT")
                 logger.info("✅ Додано колонку greeting_text до birthday_greetings")
+            # Забезпечуємо наявність унікального індексу відправлених привітань
+            cursor.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_birthday_unique ON birthday_greetings (event_id, date_sent, greeting_type)"
+            )
 
             # 🔧 Створюємо таблицю event_reminder_hashes, якщо вона ще не існує
             cursor.execute("""

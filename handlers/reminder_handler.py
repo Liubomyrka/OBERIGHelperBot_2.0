@@ -3,6 +3,7 @@ from utils.calendar_utils import get_calendar_events, get_today_events
 from utils.logger import logger
 from config import TIMEZONE
 from datetime import datetime, timedelta, time
+import asyncio
 from database import (
     set_value, get_value, get_cursor,
     save_bot_message, db
@@ -383,11 +384,12 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         max_attempts = 3  # Максимальна кількість спроб генерації
 
         while attempts < max_attempts:
-            response = openai.chat.completions.create(
+            response = await asyncio.to_thread(
+                openai.chat.completions.create,
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens,
-                temperature=0.9
+                temperature=0.9,
             )
             greeting = response.choices[0].message.content.strip()
             
@@ -503,15 +505,18 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
     if greetings_to_save:
         with get_cursor() as cursor:
             for greeting in greetings_to_save:
-                cursor.execute("""
-                    INSERT INTO birthday_greetings (event_id, date_sent, greeting_type, greeting_text)
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO birthday_greetings (event_id, date_sent, greeting_type, greeting_text)
                     VALUES (?, ?, ?, ?)
-                """, (
-                    greeting['event_id'],
-                    greeting['date_sent'],
-                    greeting['greeting_type'],
-                    greeting['greeting_text']
-                ))
+                    """,
+                    (
+                        greeting['event_id'],
+                        greeting['date_sent'],
+                        greeting['greeting_type'],
+                        greeting['greeting_text'],
+                    ),
+                )
         logger.info(f"✅ Збережено {len(greetings_to_save)} привітань у таблиці birthday_greetings")
 
 async def cleanup_old_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
@@ -558,7 +563,8 @@ def create_birthday_greetings_table():
                 event_id TEXT NOT NULL,
                 date_sent TEXT NOT NULL,
                 greeting_type TEXT NOT NULL CHECK(greeting_type IN ('morning', 'evening')),
-                greeting_text TEXT NOT NULL
+                greeting_text TEXT NOT NULL,
+                UNIQUE(event_id, date_sent, greeting_type)
             )
             """
         )
@@ -569,6 +575,9 @@ def create_birthday_greetings_table():
             cursor.execute(
                 "ALTER TABLE birthday_greetings ADD COLUMN greeting_text TEXT"
             )
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_birthday_unique ON birthday_greetings (event_id, date_sent, greeting_type)"
+        )
     logger.info("✅ Таблиця birthday_greetings створена або вже існує.")
 
 def schedule_event_reminders(job_queue: JobQueue):
