@@ -9925,3 +9925,41 @@ telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo faile
 2025-06-17 15:00:24 - OBERIGHelperBot - ERROR - __init__.py:111 - ❌ Помилка OpenAI Assistant (спроба 2): Error code: 400 - {'error': {'message': "Invalid value: 'system'. Supported values are: 'user' and 'assistant'.", 'type': 'invalid_request_error', 'param': 'role', 'code': 'invalid_value'}}
 2025-06-17 15:00:24 - OBERIGHelperBot - ERROR - oberig_assistant_handler.py:348 - Помилка ChatGPT для 611511159: Error code: 400 - {'error': {'message': "Invalid value: 'system'. Supported values are: 'user' and 'assistant'.", 'type': 'invalid_request_error', 'param': 'role', 'code': 'invalid_value'}}
 2025-06-17 15:00:24 - OBERIGHelperBot - INFO - start_handler.py:432 - ✅ OBERIG-помічник обробив запит: розкажи про хор
+2025-06-17 15:46:00 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:166 - Запуск основного додатка...
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:172 - Використовуємо існуючу базу bot_data.db
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:18 - 🔗 Підключення до бази даних: E:\програмування\OBERIGHelperBot_broken\OBERIGHelperBot_2.0\bot_data.db
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:211 - ✅ Таблиця event_reminder_hashes створена або вже існує.
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:214 - 🎉 Міграцію бази даних завершено успішно
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 611511159 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 611511159 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5958401204 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 5958401204 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 7205393686 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 7205393686 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 7322553297 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 7322553297 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5254584917 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 5254584917 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 1564008807 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 1564008807 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5252127781 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 5252127781 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 479923026 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 479923026 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 6856414327 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 6856414327 до нагадувань за замовчуванням
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 622720598 до списку users_with_reminders
+2025-06-17 15:46:02 - OBERIGHelperBot - INFO - main.py:205 - ✅ Автоматично додано користувача 622720598 до нагадувань за замовчуванням
+2025-06-17 15:46:08 - OBERIGHelperBot - ERROR - main.py:285 - Помилка при налаштуванні команд: Timed out
+2025-06-17 15:46:17 - OBERIGHelperBot - ERROR - main.py:409 - Unexpected error during bot startup: Timed out
