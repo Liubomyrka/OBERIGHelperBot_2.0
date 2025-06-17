@@ -7,6 +7,7 @@ from utils.calendar_utils import (
     get_calendar_events,
     get_today_events,
     get_event_details,
+    get_upcoming_birthdays_cached,
 )
 from utils.logger import logger
 from database import (
@@ -157,6 +158,33 @@ async def schedule_command(
             parse_mode=None,
             disable_web_page_preview=True,
         )
+
+
+async def upcoming_birthdays_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show upcoming birthdays."""
+    if not await ensure_private_chat(update, context, "upcoming_birthdays"):
+        return
+
+    days = 30
+    if context.args:
+        try:
+            days = int(context.args[0])
+        except ValueError:
+            pass
+
+    events = get_upcoming_birthdays_cached(days)
+    if not events:
+        await update.message.reply_text("🎂 У найближчі дні народження не заплановані.")
+        return
+
+    lines = []
+    for ev in events:
+        start = ev["start"].get("dateTime", ev["start"].get("date"))
+        date = start.split("T")[0]
+        lines.append(f"• {date} – {ev.get('summary', 'Без назви')}")
+
+    message = "🎂 Найближчі дні народження:\n" + "\n".join(lines)
+    await update.message.reply_text(message)
 
 
 # 🛡️ Функція event_details_callback

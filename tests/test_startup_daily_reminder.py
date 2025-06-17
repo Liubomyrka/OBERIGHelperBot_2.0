@@ -33,6 +33,12 @@ def stub_dependencies(monkeypatch):
     pytz_mod.timezone = lambda name: datetime.timezone.utc
     monkeypatch.setitem(sys.modules, 'pytz', pytz_mod)
 
+    logger_mod = types.ModuleType('utils.logger')
+    logger_mod.logger = types.SimpleNamespace(info=lambda *a, **kw: None, warning=lambda *a, **kw: None, error=lambda *a, **kw: None)
+    monkeypatch.setitem(sys.modules, 'utils.logger', logger_mod)
+    if 'utils' in sys.modules:
+        del sys.modules['utils']
+
     cal_mod = types.ModuleType('utils.calendar_utils')
     cal_mod.get_calendar_events = lambda *a, **kw: []
     cal_mod.get_today_events = lambda *a, **kw: []
