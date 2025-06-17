@@ -11,6 +11,9 @@ from utils.calendar_utils import (
     get_top_10_videos_cached,
     get_past_events_cached,
     get_last_event,
+    get_events_in_range,
+    count_events,
+    get_next_event,
 )
 from database import get_value, set_value
 from datetime import datetime
@@ -213,6 +216,7 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
         past_events = None
         last_event_info = ""
         past_count_info = ""
+        next_event_info = ""
 
         if any(word in user_message for word in ["останн", "минул"]):
             past_events = get_past_events_cached(max_results=50)
@@ -224,6 +228,14 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             event = get_last_event(keyword) if keyword else (past_events[0] if past_events else None)
             if event:
                 last_event_info = f"{event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
+
+        if "наступн" in user_message:
+            import re
+            m = re.search(r"наступн[\w\s]*\s+([\w\s\u0400-\u04FF]+)", user_message)
+            keyword = m.group(1).strip() if m else ""
+            event = get_next_event(keyword) if keyword else None
+            if event:
+                next_event_info = f"{event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
 
         if "скільки" in user_message and "раз" in user_message:
             if past_events is None:
@@ -238,14 +250,26 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
                     for ev in past_events
                     if keyword.lower()
                     in " ".join(
-                        [
-                            ev.get("summary", ""),
-                            ev.get("description", ""),
-                            ev.get("location", ""),
-                        ]
+                        [ev.get("summary", ""), ev.get("description", ""), ev.get("location", "")]
                     ).lower()
                 )
                 past_count_info = f"{keyword}: {count}"
+        elif "скільки" in user_message and any(w in user_message for w in ["місяця", "року"]):
+            import re
+            now_dt = datetime.now()
+            if "минулого місяця" in user_message:
+                start_dt = (now_dt.replace(day=1) - timedelta(days=1)).replace(day=1)
+                end_dt = start_dt + timedelta(days=31)
+            elif "цього року" in user_message:
+                start_dt = now_dt.replace(month=1, day=1)
+                end_dt = now_dt
+            else:
+                start_dt = now_dt.replace(day=1)
+                end_dt = now_dt
+            m = re.search(r"[вв]\s+([\w\s\u0400-\u04FF]+)", user_message)
+            keyword = m.group(1).strip() if m else ""
+            events_range = get_events_in_range(start_dt, end_dt, keyword=keyword or None)
+            past_count_info = f"{keyword}: {count_events(events_range)}"
 
         video_context = (
             f"🎥 Найновіше: {latest_video}\n"
@@ -268,6 +292,8 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             dynamic_prompt += f"\n- Остання подія: {last_event_info}"
         if past_count_info:
             dynamic_prompt += f"\n- Лічильник подій: {past_count_info}"
+        if next_event_info:
+            dynamic_prompt += f"\n- Наступна подія: {next_event_info}"
         dynamic_prompt += f"\n- YouTube: {video_context}"
         dynamic_prompt += f"\n- Соцмережі: {social_context}"
 

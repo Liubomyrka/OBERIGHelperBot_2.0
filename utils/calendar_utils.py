@@ -2,7 +2,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from utils.youtube_utils import get_youtube_service
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from utils.logger import logger
 from config import GOOGLE_CREDENTIALS, CALENDAR_ID, YOUTUBE_API_KEY, OBERIG_PLAYLIST_ID
@@ -81,6 +81,126 @@ def get_calendar_events_cached(max_results: int = 150, ttl: int = 300):
     except Exception:
         pass
     return events
+
+
+# New helpers ---------------------------------------------------------------
+
+def get_upcoming_birthdays(days: int = 30):
+    """Return upcoming birthday events within ``days`` days."""
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            GOOGLE_CREDENTIALS,
+            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+        )
+        service = build("calendar", "v3", credentials=credentials)
+
+        now = datetime.now(BERLIN_TZ)
+        time_max = (now + timedelta(days=days)).isoformat()
+        events_result = (
+            service.events()
+            .list(
+                calendarId=CALENDAR_ID,
+                timeMin=now.isoformat(),
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
+
+        birthday_events = []
+        for ev in events_result.get("items", []):
+            text = " ".join(
+                [
+                    ev.get("summary", ""),
+                    ev.get("description", ""),
+                ]
+            ).lower()
+            if "день народження" in text:
+                birthday_events.append(ev)
+
+        logger.info(f"Отримано {len(birthday_events)} майбутніх днів народження")
+        return birthday_events
+    except Exception as e:
+        logger.error(f"Помилка при отриманні майбутніх днів народження: {e}")
+        return []
+
+
+def get_upcoming_birthdays_cached(days: int = 30, ttl: int = 300):
+    """Cached variant of :func:`get_upcoming_birthdays`."""
+    try:
+        cached = get_value("up_birthdays_cache")
+        ts = get_value("up_birthdays_cache_ts")
+        now_ts = datetime.now(BERLIN_TZ).timestamp()
+        if cached and ts and now_ts - float(ts) < ttl:
+            return json.loads(cached)
+    except Exception:
+        pass
+
+    events = get_upcoming_birthdays(days)
+    try:
+        set_value("up_birthdays_cache", json.dumps(events))
+        set_value("up_birthdays_cache_ts", str(now_ts))
+    except Exception:
+        pass
+    return events
+
+
+def get_events_in_range(start_dt: datetime, end_dt: datetime, keyword: str | None = None, location: str | None = None):
+    """Return events between ``start_dt`` and ``end_dt`` optionally filtered."""
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            GOOGLE_CREDENTIALS,
+            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+        )
+        service = build("calendar", "v3", credentials=credentials)
+
+        events_result = (
+            service.events()
+            .list(
+                calendarId=CALENDAR_ID,
+                timeMin=start_dt.astimezone(BERLIN_TZ).isoformat(),
+                timeMax=end_dt.astimezone(BERLIN_TZ).isoformat(),
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
+
+        events = []
+        for ev in events_result.get("items", []):
+            text = " ".join(
+                [ev.get("summary", ""), ev.get("description", ""), ev.get("location", "")]
+            ).lower()
+            if keyword and keyword.lower() not in text:
+                continue
+            if location and location.lower() not in ev.get("location", "").lower():
+                continue
+            events.append(ev)
+        return events
+    except Exception as e:
+        logger.error(f"Помилка при отриманні подій у діапазоні: {e}")
+        return []
+
+
+def count_events(events: list) -> int:
+    """Return the number of events in ``events`` list."""
+    return len(events or [])
+
+
+def get_next_event(keyword: str):
+    """Return the closest upcoming event containing ``keyword``."""
+    keyword = keyword.lower().strip()
+    events = get_calendar_events_cached(max_results=50)
+    for ev in events:
+        text = " ".join([
+            ev.get("summary", ""),
+            ev.get("description", ""),
+            ev.get("location", ""),
+        ]).lower()
+        if keyword in text:
+            return ev
+    return None
 
 
 # \u041e\u0442\u0440\u0438\u043c\u0430\u043d\u043d\u044f \u043c\u0438\u043d\u0443\u043b\u0438\u0445 \u043f\u043e\u0434\u0456\u0439
@@ -604,8 +724,13 @@ async def check_new_videos():
 __all__ = [
     "get_calendar_events",
     "get_calendar_events_cached",
+    "get_upcoming_birthdays",
+    "get_upcoming_birthdays_cached",
     "get_past_events",
     "get_past_events_cached",
+    "get_events_in_range",
+    "count_events",
+    "get_next_event",
     "get_last_event",
     "get_today_events",
     "get_upcoming_event_reminders",
