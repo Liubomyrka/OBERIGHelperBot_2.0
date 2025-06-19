@@ -82,7 +82,6 @@ from utils.calendar_utils import (
     get_event_details,
     get_latest_youtube_video,
     get_most_popular_youtube_video,
-    get_top_10_videos,  # Оновлюємо
     check_new_videos,
 )
 import json
