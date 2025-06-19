@@ -114,6 +114,31 @@ def get_top_5_videos(playlist_id):
     return top_5_videos
 
 
+def get_top_10_videos(playlist_id):
+    """Отримує топ-10 відео з плейлиста за кількістю переглядів."""
+    items = get_playlist_items(playlist_id)
+
+    video_stats = []
+
+    for item in items:
+        video_id = item["snippet"]["resourceId"]["videoId"]
+        video_details = get_video_details(video_id)
+
+        if video_details:
+            views = int(video_details["statistics"].get("viewCount", 0))
+            video_stats.append(
+                {
+                    "title": video_details["snippet"]["title"],
+                    "views": views,
+                    "url": f"https://youtu.be/{video_id}",
+                }
+            )
+
+    top_10_videos = sorted(video_stats, key=lambda x: x["views"], reverse=True)[:10]
+
+    return top_10_videos
+
+
 def _get_cached_value(key: str, ttl: int):
     try:
         cached = get_value(key)
@@ -161,6 +186,15 @@ def get_top_5_videos_cached(ttl: int = 300):
     return result
 
 
+def get_top_10_videos_cached(ttl: int = 300):
+    cached = _get_cached_value("yt_top10", ttl)
+    if cached is not None:
+        return cached
+    result = get_top_10_videos(OBERIG_PLAYLIST_ID)
+    _set_cached_value("yt_top10", result)
+    return result
+
+
 __all__ = [
     "get_youtube_service",
     "get_playlist_items",
@@ -168,7 +202,9 @@ __all__ = [
     "get_latest_video",
     "get_most_popular_video",
     "get_top_5_videos",
+    "get_top_10_videos",
     "get_latest_video_cached",
     "get_most_popular_video_cached",
     "get_top_5_videos_cached",
+    "get_top_10_videos_cached",
 ]
