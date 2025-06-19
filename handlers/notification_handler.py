@@ -55,6 +55,7 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
             message_ids = []
 
             # Надсилаємо сповіщення користувачам
+            header = escape_markdown("🎥 Нове відео на каналі!", version=2)
             for user_id in bot_users:
                 if (
                     str(user_id) not in video_notifications_disabled
@@ -63,7 +64,7 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                     try:
                         message = await context.bot.send_message(
                             chat_id=user_id,
-                            text=f"🎥 Нове відео на каналі!\n\n*{escaped_title}*\n{url}",
+                            text=f"{header}\n\n*{escaped_title}*\n{url}",
                             parse_mode=ParseMode.MARKDOWN_V2,
                         )
                         message_ids.append((str(user_id), message.message_id))
@@ -85,7 +86,7 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                     try:
                         message = await context.bot.send_message(
                             chat_id=chat_id,
-                            text=f"🎥 Нове відео на каналі!\n\n*{escaped_title}*\n{url}",
+                            text=f"{header}\n\n*{escaped_title}*\n{url}",
                             parse_mode=ParseMode.MARKDOWN_V2,
                         )
                         message_ids.append((str(chat_id), message.message_id))
