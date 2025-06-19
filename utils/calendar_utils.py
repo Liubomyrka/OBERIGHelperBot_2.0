@@ -649,9 +649,9 @@ def get_most_popular_youtube_video_cached(ttl: int = 300):
 
 
 def get_top_10_videos_cached(ttl: int = 300):
-    from utils.youtube_utils import get_top_5_videos_cached
+    from utils.youtube_utils import get_top_10_videos_cached as yt_top10_cached
 
-    return get_top_5_videos_cached(ttl)
+    return yt_top10_cached(ttl)
 
 # Перевірка нових відео в плейлісті YouTube
 async def check_new_videos():

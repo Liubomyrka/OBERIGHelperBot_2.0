@@ -10,7 +10,7 @@ from telegram.ext import ContextTypes
 from utils.calendar_utils import (
     get_latest_youtube_video,
     get_most_popular_youtube_video,
-    get_top_10_videos,
+    get_top_10_videos_cached,
 )
 from database import save_bot_message
 from utils.logger import logger
@@ -66,7 +66,7 @@ async def top_10_videos_command(update: Update, context: ContextTypes.DEFAULT_TY
     await auto_add_user(update, context)
     logger.info("Виконання команди: /top_10_videos")
     try:
-        videos = get_top_10_videos()
+        videos = get_top_10_videos_cached()
         if not videos:
             message = await update.message.reply_text(
                 ERROR_VIDEO_NOT_FOUND
