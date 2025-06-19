@@ -100,16 +100,12 @@ def get_top_5_videos(playlist_id):
 
         if video_details:
             views = int(video_details["statistics"].get("viewCount", 0))
-            video_stats.append(
-                {
-                    "title": video_details["snippet"]["title"],
-                    "views": views,
-                    "url": f"https://youtu.be/{video_id}",
-                }
-            )
+            title = video_details["snippet"]["title"]
+            url = f"https://youtu.be/{video_id}"
+            video_stats.append((title, url, views))
 
     # Сортування за кількістю переглядів
-    top_5_videos = sorted(video_stats, key=lambda x: x["views"], reverse=True)[:5]
+    top_5_videos = sorted(video_stats, key=lambda x: x[2], reverse=True)[:5]
 
     return top_5_videos
 
@@ -126,15 +122,11 @@ def get_top_10_videos(playlist_id):
 
         if video_details:
             views = int(video_details["statistics"].get("viewCount", 0))
-            video_stats.append(
-                {
-                    "title": video_details["snippet"]["title"],
-                    "views": views,
-                    "url": f"https://youtu.be/{video_id}",
-                }
-            )
+            title = video_details["snippet"]["title"]
+            url = f"https://youtu.be/{video_id}"
+            video_stats.append((title, url, views))
 
-    top_10_videos = sorted(video_stats, key=lambda x: x["views"], reverse=True)[:10]
+    top_10_videos = sorted(video_stats, key=lambda x: x[2], reverse=True)[:10]
 
     return top_10_videos
 
