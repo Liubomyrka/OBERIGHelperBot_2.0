@@ -578,7 +578,7 @@ def schedule_event_reminders(job_queue: JobQueue):
     job_queue.run_repeating(
         send_daily_reminder,
         interval=3600,  # раз на годину
-        first=15,
+        first=3600,
     )
     logger.info("✅ Планування завдань для нагадувань успішно налаштовано.")
 
