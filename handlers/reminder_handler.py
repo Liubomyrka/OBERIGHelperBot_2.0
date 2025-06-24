@@ -13,9 +13,10 @@ import json
 import openai
 import hashlib
 import os
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
+from handlers.schedule_handler import _generate_short_id, _cache_event_id
 
 from utils import (
     init_openai_api,
@@ -144,39 +145,18 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
             return
         
         active_chats = get_active_chats()
-        header = escape_markdown(
-            f"🔔 Розклад подій на сьогодні, {current_date.day:02d}"
-            f" {current_date.strftime('%B').lower()}:",
+
+        header_text = escape_markdown(
+            f"🔔 Розклад подій на сьогодні, {current_date.day:02d} {current_date.strftime('%B').lower()} – {len(events)} подій",
             version=2,
         )
-        daily_message = f"*{header}*\n\n"
-        for event in events:
-            event_time = event.get('start', {}).get('dateTime', 'Весь день')
-            if event_time and 'T' in event_time:
-                event_time = datetime.fromisoformat(event_time.replace('Z', '+00:00')).astimezone(berlin_tz).strftime('%H:%M')
-            summary = escape_markdown(event.get('summary', ''), version=2)
-            daily_message += (
-                f"📅 *{summary}*\n"
-                f"🕒 Час: {event_time}\n"
-            )
-            if 'location' in event and event['location']:
-                location = escape_markdown(event['location'], version=2)
-                daily_message += f"📍 Місце: {location}\n"
-            link = event.get('htmlLink')
-            if link:
-                escaped_link = escape_markdown(link, version=2)
-                daily_message += f"🔗 [Відкрити в календарі]({escaped_link})\n"
-            daily_message += "\n"
-        
-        if len(daily_message) > 4096:
-            daily_message = daily_message[:4090] + "..."
-        
+
         sent_any = False
         for chat_id in active_chats:
             try:
                 message = await context.bot.send_message(
                     chat_id=int(chat_id),
-                    text=daily_message,
+                    text=f"*{header_text}*",
                     parse_mode=ParseMode.MARKDOWN_V2,
                 )
                 save_bot_message(chat_id, message.message_id, "daily_reminder")
@@ -185,6 +165,46 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
                 logger.warning(
                     f"⚠️ Не вдалося надіслати щоденне нагадування в чат {chat_id}: {e}"
                 )
+
+        for event in events:
+            try:
+                event_time = event.get('start', {}).get('dateTime', event.get('start', {}).get('date', ''))
+                if event_time and 'T' in event_time:
+                    event_time = datetime.fromisoformat(event_time.replace('Z', '+00:00')).astimezone(berlin_tz).strftime('%H:%M')
+                summary = escape_markdown(event.get('summary', 'Без назви'), version=2)
+                text = f"📅 *{summary}*"
+                if event_time:
+                    text += f"\n🕒 Час: {event_time}"
+                location = event.get('location')
+                if location:
+                    text += f"\n📍 Місце: {escape_markdown(location, version=2)}"
+
+                short_id = _generate_short_id(event['id'])
+                _cache_event_id(short_id, event['id'])
+
+                buttons = [[InlineKeyboardButton("Деталі", callback_data=f"event_{short_id}")]]
+                link = event.get('htmlLink')
+                if link:
+                    buttons[0].append(InlineKeyboardButton("деталі в календарі", url=link))
+                markup = InlineKeyboardMarkup(buttons)
+
+                for chat_id in active_chats:
+                    try:
+                        message = await context.bot.send_message(
+                            chat_id=int(chat_id),
+                            text=text,
+                            parse_mode=ParseMode.MARKDOWN_V2,
+                            reply_markup=markup,
+                        )
+                        save_bot_message(chat_id, message.message_id, "daily_reminder")
+                        sent_any = True
+                    except Exception as e:
+                        logger.warning(
+                            f"⚠️ Не вдалося надіслати щоденне нагадування в чат {chat_id}: {e}"
+                        )
+
+            except Exception as e:
+                logger.error(f"❌ Помилка при обробці події в daily_reminder: {e}")
 
         if sent_any:
             logger.info(

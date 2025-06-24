@@ -19,6 +19,14 @@ def stub_dependencies(monkeypatch):
     tg.ext.ContextTypes = types.SimpleNamespace(DEFAULT_TYPE=object)
     tg.constants.ParseMode = types.SimpleNamespace(MARKDOWN='markdown', MARKDOWN_V2='markdown_v2')
     tg.helpers.escape_markdown = lambda text, version=None: text
+    class Btn:
+        def __init__(self, *a, **kw):
+            pass
+    class Markup:
+        def __init__(self, buttons):
+            self.inline_keyboard = buttons
+    tg.InlineKeyboardButton = Btn
+    tg.InlineKeyboardMarkup = Markup
     monkeypatch.setitem(sys.modules, 'telegram', tg)
     monkeypatch.setitem(sys.modules, 'telegram.ext', tg.ext)
     monkeypatch.setitem(sys.modules, 'telegram.constants', tg.constants)
@@ -71,6 +79,8 @@ def stub_dependencies(monkeypatch):
     cal_mod = types.ModuleType('utils.calendar_utils')
     cal_mod.get_calendar_events = lambda *a, **kw: []
     cal_mod.get_today_events = lambda *a, **kw: []
+    cal_mod.get_event_details = lambda *a, **kw: {}
+    cal_mod.get_upcoming_birthdays_cached = lambda *a, **kw: []
     monkeypatch.setitem(sys.modules, 'utils.calendar_utils', cal_mod)
     logger_mod = types.ModuleType('utils.logger')
     logger_mod.logger = types.SimpleNamespace(info=lambda *a, **kw: None, warning=lambda *a, **kw: None, error=lambda *a, **kw: None, debug=lambda *a, **kw: None)
