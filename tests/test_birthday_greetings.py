@@ -204,6 +204,14 @@ def test_fallback_uses_dative(monkeypatch, stub_dependencies):
     assert 'Галині' in greeting
 
 
+def test_extract_birthday_name(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    summary = 'Група хору «Оберіг» – день народження Таміла'
+    assert module.extract_birthday_name(summary) == 'Таміла'
+
+
 def test_startup_birthday_check_runs_any_time(monkeypatch, stub_dependencies):
     module = importlib.import_module('handlers.reminder_handler')
     importlib.reload(module)
