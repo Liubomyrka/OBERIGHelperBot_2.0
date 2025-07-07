@@ -402,7 +402,9 @@ def extract_birthday_name(summary: str) -> str:
 
     return "співоча зірка"
 
-async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
+async def generate_birthday_greeting(
+    name: str, time_of_day: str, prompt_override: str | None = None
+) -> str:
     try:
         dative_name = inflect_to_dative(name)
         prompt = (
@@ -410,7 +412,7 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
             "привітання з днем народження для групи з музичною тематикою. "
             f"Згадай {dative_name} і додай емоджі та хештеги. Стиль залежить від {time_of_day}: "
             "morning – енергійний, evening – теплий. Завершуй текст крапкою або знаком оклику."
-        )
+        ) if prompt_override is None else prompt_override
 
         if ASSISTANT_ID:
             greeting = await call_openai_assistant(
@@ -497,6 +499,24 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE, force: bo
 
         logger.info(f"Знайдено день народження: {name}")
         greeting = await generate_birthday_greeting(name, greeting_type)
+
+        dative_name = inflect_to_dative(name)
+        if (
+            name.lower() not in greeting.lower()
+            and dative_name.lower() not in greeting.lower()
+        ):
+            logger.warning(
+                "⚠️ Згенероване привітання не містить імені, повторюю запит"
+            )
+            fix_prompt = (
+                "Попередній текст привітання не містив імені іменинника. "
+                f"Створи новий варіант і обов'язково згадай {dative_name}. "
+                "Додай емоджі та хештеги. Завершуй текст крапкою або знаком оклику."
+            )
+            greeting = await generate_birthday_greeting(
+                name, greeting_type, prompt_override=fix_prompt
+            )
+
         logger.info(f"Згенеровано вітання для {name}: {greeting}")
 
         # Надсилаємо привітання в усі активні чати
