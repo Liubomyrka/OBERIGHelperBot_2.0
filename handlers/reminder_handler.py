@@ -396,7 +396,8 @@ def extract_birthday_name(summary: str) -> str:
             candidate = match.group(1)
             parts = re.findall(r"[\w'’\-\u0400-\u04FF]+", candidate)
             if parts:
-                return parts[-1]
+                # take the first token as the name to avoid returning the surname
+                return parts[0]
     except Exception:
         pass
 
