@@ -19,7 +19,7 @@ from database import (
     update_user_list,
 )
 from handlers.help_handler import help_command
-from handlers.schedule_handler import schedule_command
+from handlers.schedule_handler import schedule_command, upcoming_birthdays_command
 from handlers.reminder_handler import set_reminder, unset_reminder
 from handlers.notification_handler import toggle_video_notifications
 from handlers.admin_handler import (
@@ -62,6 +62,7 @@ SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
 Виберіть одну з опцій:
 📋 - Переглянути розклад подій
 🕒 - Переглянути події на сьогодні
+🎂 - Переглянути найближчі дні народження
 
 🔔 Нагадування (за замовчуванням увімкнені):
 - 🔕 Вимкнути нагадування - припинити отримувати сповіщення за годину до події
@@ -72,6 +73,7 @@ SCHEDULE_MENU_TEXT_GROUP = """📅 *Меню розкладу*
 Виберіть одну з опцій:
 📋 - Переглянути розклад подій
 🕒 - Переглянути події на сьогодні
+🎂 - Переглянути найближчі дні народження
 
 🔔 Нагадування завжди увімкнені для групових чатів і не можуть бути вимкнені."""
 
@@ -276,12 +278,15 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👥 Список чатів",
         "📋 Розклад подій",
         "🕒 Події на сьогодні",
+        "🎂 Найближчі ДН",
         "🔕 Вимкнути нагадування",
         "🔔 Увімкнути нагадування",
         "📺 Наші відео",
         "🆕 Найновше відео",
         "🔥 Найпопулярніше відео",
         "🏆 Топ-10 відео",
+        "📤 Поділитися новим",
+        "📤 Поділитися популярним",
         "🔔 Увімкнути сповіщення",
         "🔕 Вимкнути сповіщення",
         "🔙 Головне меню",
@@ -368,6 +373,9 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "🕒 Події на сьогодні":
                 await schedule_command(update, context, today_only=True)
                 logger.info("✅ Натиснуто кнопку '🕒 Події на сьогодні'")
+            elif text == "🎂 Найближчі ДН":
+                await upcoming_birthdays_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🎂 Найближчі ДН'")
             elif text == "🔕 Вимкнути нагадування":
                 await unset_reminder(update, context)
                 logger.info("✅ Натиснуто кнопку '🔕 Вимкнути нагадування'")
@@ -387,6 +395,12 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "🔥 Найпопулярніше відео":
                 await most_popular_video_command(update, context)
                 logger.info("✅ Натиснуто кнопку '🔥 Найпопулярніше відео'")
+            elif text == "📤 Поділитися новим":
+                await share_latest_video(update, context)
+                logger.info("✅ Натиснуто кнопку '📤 Поділитися новим'")
+            elif text == "📤 Поділитися популярним":
+                await share_popular_video(update, context)
+                logger.info("✅ Натиснуто кнопку '📤 Поділитися популярним'")
             elif text == "🏆 Топ-10 відео":
                 # Скидаємо сторінку до 0 при новому виклику команди
                 context.user_data["top_10_page"] = 0
@@ -564,7 +578,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
             keyboard = [
                 [KeyboardButton("📋 Розклад подій")],
-                [KeyboardButton("🕒 Події на сьогодні")],
+                [KeyboardButton("🕒 Події на сьогодні"), KeyboardButton("🎂 Найближчі ДН")],
                 [reminder_button],
                 [KeyboardButton("🔙 Головне меню")],
             ]
@@ -572,7 +586,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         else:
             keyboard = [
                 [KeyboardButton("📋 Розклад подій")],
-                [KeyboardButton("🕒 Події на сьогодні")],
+                [KeyboardButton("🕒 Події на сьогодні"), KeyboardButton("🎂 Найближчі ДН")],
                 [KeyboardButton("🔙 Головне меню")],
             ]
             menu_text = SCHEDULE_MENU_TEXT_GROUP

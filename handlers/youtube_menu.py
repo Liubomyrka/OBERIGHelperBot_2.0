@@ -25,6 +25,8 @@ YOUTUBE_MENU_TEXT = """🎥 *Меню YouTube*
 🆕 - Переглянути найновіше відео
 🔥 - Переглянути найпопулярніше відео
 🏆 - Топ-10 найпопулярніших відео
+📤 - Поділитися новим відео
+📤 - Поділитися популярним відео
 
 🔔 Керування сповіщеннями:
 - 🔔 Увімкнути сповіщення - отримувати повідомлення про нові відео
@@ -137,6 +139,7 @@ async def show_youtube_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [KeyboardButton("📺 Наші відео")],
             [KeyboardButton("🆕 Найновше відео"), KeyboardButton("🔥 Найпопулярніше відео")],
+            [KeyboardButton("📤 Поділитися новим"), KeyboardButton("📤 Поділитися популярним")],
             [KeyboardButton("🏆 Топ-10 відео")],
             [KeyboardButton("🔔 Увімкнути сповіщення"), KeyboardButton("🔕 Вимкнути сповіщення")],
             [KeyboardButton("🔙 Головне меню")],
