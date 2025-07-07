@@ -204,6 +204,33 @@ def test_fallback_uses_dative(monkeypatch, stub_dependencies):
     assert 'Галині' in greeting
 
 
+def test_retry_when_name_missing(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    chat_mock = AsyncMock(side_effect=['Святкуємо разом!', 'Вітаємо, Марії!'])
+    monkeypatch.setattr(module, 'call_openai_chat', chat_mock)
+
+    monkeypatch.setattr(module, 'get_today_events', lambda: [{'id': '1', 'summary': 'Марія – день народження'}])
+    monkeypatch.setattr(module, 'get_active_chats', lambda: ['100'])
+
+    class FakeDT(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.datetime(2024, 1, 1, 9, 0, tzinfo=datetime.timezone.utc)
+
+    monkeypatch.setattr(module, 'datetime', FakeDT)
+
+    module.create_birthday_greetings_table()
+
+    context = types.SimpleNamespace(bot=types.SimpleNamespace(send_message=AsyncMock()))
+    asyncio.run(module.check_birthday_greetings(context))
+
+    assert chat_mock.await_count == 2
+    args, kwargs = context.bot.send_message.await_args
+    assert 'Марії' in kwargs['text']
+
+
 def test_extract_birthday_name(monkeypatch, stub_dependencies):
     module = importlib.import_module('handlers.reminder_handler')
     importlib.reload(module)
