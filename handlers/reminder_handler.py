@@ -119,7 +119,7 @@ async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         save_bot_message(str(update.effective_chat.id), message.message_id, "general")
 
-async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
+async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = False):
     now = datetime.now(berlin_tz)
     if now.hour < 8:
         logger.info("🔇 Нічний режим активний, нагадування не надсилається")
@@ -135,7 +135,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         event_signatures = [get_event_signature(e) for e in events]
         current_hash = hashlib.sha256("".join(sorted(event_signatures)).encode('utf-8')).hexdigest()
 
-        if already_sent == current_date.isoformat() and stored_hash == current_hash:
+        if (not force) and already_sent == current_date.isoformat() and stored_hash == current_hash:
             logger.info("🔄 Щоденне нагадування вже було відправлено сьогодні і події не змінювались.")
             return
 
@@ -244,7 +244,7 @@ async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         logger.info("🔄 Запуск щоденних нагадувань при старті бота.")
         await send_daily_reminder(context)
 
-async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
+async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool = False):
     now = datetime.now(pytz.timezone(TIMEZONE))
     one_hour_later = now + timedelta(hours=1)
     logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
@@ -305,7 +305,7 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
             last_hash = db.get_event_reminder_hash(event_id, reminder_type)
 
 
-            if last_hash == reminder_hash:
+            if (not force) and last_hash == reminder_hash:
                 continue  # Уже надсилали таке саме повідомлення
 
             # 🔁 Надсилання у тестовий чат або всім користувачам з reminders
@@ -446,7 +446,7 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         )
         return escape_markdown(default, version=2)
 
-async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
+async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE, force: bool = False):
     # Ensure the table exists before any DB operations
     create_birthday_greetings_table()
 
@@ -463,7 +463,7 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
         """, (today.isoformat(), greeting_type))
         already_sent = cursor.fetchone() is not None
 
-    if already_sent:
+    if already_sent and not force:
         logger.info(f"ℹ️ Нагадування про день народження вже надіслане ({greeting_type}) на {today}")
         return
 
