@@ -34,7 +34,7 @@ from handlers.youtube_menu import (
     top_10_videos_command,
 )
 
-from handlers.notes_menu import show_notes_menu
+from handlers.notes_menu import show_notes_menu, get_sheet_command
 from handlers.help_handler import help_command
 from handlers.schedule_handler import (
     schedule_command,
@@ -222,6 +222,7 @@ async def main():
         BotCommand("upcoming_birthdays", "Найближчі дні народження"),
         BotCommand("reminder_on", "Увімкнути нагадування"),
         BotCommand("reminder_off", "Вимкнути нагадування"),
+        BotCommand("get_sheet", "Отримати ноти"),
         BotCommand("latest_video", "Останнє відео"),
         BotCommand("most_popular_video", "Найпопулярніше відео"),
         BotCommand("top_10_videos", "Топ-10 відео"),  # Оновлюємо
@@ -311,6 +312,11 @@ async def main():
         CommandHandler("reminder_on", set_reminder, filters=filters.ChatType.PRIVATE),
         CommandHandler(
             "reminder_off", unset_reminder, filters=filters.ChatType.PRIVATE
+        ),
+        CommandHandler(
+            "get_sheet",
+            get_sheet_command,
+            filters=filters.ChatType.PRIVATE,
         ),
         CommandHandler(
             "latest_video", latest_video_command, filters=filters.ChatType.PRIVATE
