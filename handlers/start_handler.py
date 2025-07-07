@@ -30,6 +30,9 @@ from handlers.admin_handler import (
     is_admin,
     delete_messages,
     delete_recent,
+    force_daily_reminder_command,
+    force_hourly_reminder_command,
+    force_birthday_command,
 )
 from handlers.feedback_handler import start_feedback, show_my_feedback
 from handlers.oberig_assistant_handler import handle_oberig_assistant
@@ -273,6 +276,9 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔙 Головне меню",
         "🗑️ Видалити повідомлення",
         "🗑️ Видалити за 30 хв",
+        "📅 Примусово розклад",
+        "⏰ Примусово нагадування",
+        "🎂 Примусово ДН",
         "📊 Аналітика за 7 днів",
         "📊 Аналітика за 30 днів",
         "📈 Статистика використання",
@@ -365,6 +371,18 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if await is_admin(update.effective_user.id):
                     await delete_recent(update, context)
                     logger.info("✅ Виконано команду '🗑️ Видалити за 30 хв'")
+            elif text == "📅 Примусово розклад":
+                if await is_admin(update.effective_user.id):
+                    await force_daily_reminder_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '📅 Примусово розклад'")
+            elif text == "⏰ Примусово нагадування":
+                if await is_admin(update.effective_user.id):
+                    await force_hourly_reminder_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '⏰ Примусово нагадування'")
+            elif text == "🎂 Примусово ДН":
+                if await is_admin(update.effective_user.id):
+                    await force_birthday_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '🎂 Примусово ДН'")
             elif text == "📊 Аналітика за 7 днів":
                 if await is_admin(update.effective_user.id):
                     context.args = ["7"]
