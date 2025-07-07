@@ -72,6 +72,9 @@ from handlers.admin_handler import (
     is_admin,
     delete_messages,
     delete_recent,
+    force_daily_reminder_command,
+    force_hourly_reminder_command,
+    force_birthday_command,
 )
 from utils.analytics import Analytics
 from handlers.feedback_handler import get_feedback_handlers
@@ -233,6 +236,9 @@ async def main():
         BotCommand("group_chats_list", "Список груп (адмін)"),
         BotCommand("delete_messages", "Видалити повідомлення (адмін)"),
         BotCommand("delete_recent", "Видалити за 30 хв (адмін)"),
+        BotCommand("force_daily_reminder", "Примусово надіслати розклад"),
+        BotCommand("force_hourly_reminder", "Примусово нагадати про події"),
+        BotCommand("force_birthday", "Примусово вітати з ДН"),
     ]
 
     group_commands = [BotCommand("start", "Запустити бота")]
@@ -245,6 +251,9 @@ async def main():
         BotCommand("group_chats_list", "Список груп"),
         BotCommand("delete_messages", "Видалити повідомлення"),
         BotCommand("delete_recent", "Видалити за 30 хв (адмін)"),
+        BotCommand("force_daily_reminder", "Примусово розклад"),
+        BotCommand("force_hourly_reminder", "Примусово нагадування"),
+        BotCommand("force_birthday", "Примусово ДН"),
     ]
 
     try:
@@ -350,6 +359,21 @@ async def main():
         ),
         CommandHandler(
             "delete_recent", delete_recent, filters=filters.ChatType.PRIVATE
+        ),
+        CommandHandler(
+            "force_daily_reminder",
+            force_daily_reminder_command,
+            filters=filters.ChatType.PRIVATE,
+        ),
+        CommandHandler(
+            "force_hourly_reminder",
+            force_hourly_reminder_command,
+            filters=filters.ChatType.PRIVATE,
+        ),
+        CommandHandler(
+            "force_birthday",
+            force_birthday_command,
+            filters=filters.ChatType.PRIVATE,
         ),
         MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, text_menu_handler),
     ]
