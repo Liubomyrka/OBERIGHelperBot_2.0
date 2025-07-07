@@ -3,6 +3,16 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from utils.logger import logger
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 from utils.calendar_utils import check_new_videos
 from database import get_value, set_value, get_cursor
 import json
@@ -61,19 +71,15 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                     str(user_id) not in video_notifications_disabled
                     or not video_notifications_disabled[str(user_id)]
                 ):
-                    try:
-                        message = await context.bot.send_message(
-                            chat_id=user_id,
-                            text=f"{header}\n\n*{escaped_title}*\n{url}",
-                            parse_mode=ParseMode.MARKDOWN_V2,
-                        )
+                    message = await safe_send_markdown(
+                        context.bot,
+                        user_id,
+                        f"{header}\n\n*{escaped_title}*\n{url}",
+                    )
+                    if message:
                         message_ids.append((str(user_id), message.message_id))
                         logger.info(
                             f"✅ Надіслано сповіщення про нове відео користувачу {user_id}"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"❌ Помилка при надсиланні сповіщення користувачу {user_id}: {e}"
                         )
 
             # Надсилаємо сповіщення групам
@@ -83,19 +89,15 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                     str(chat_id) not in group_notifications_disabled
                     or not group_notifications_disabled[str(chat_id)]
                 ):
-                    try:
-                        message = await context.bot.send_message(
-                            chat_id=chat_id,
-                            text=f"{header}\n\n*{escaped_title}*\n{url}",
-                            parse_mode=ParseMode.MARKDOWN_V2,
-                        )
+                    message = await safe_send_markdown(
+                        context.bot,
+                        chat_id,
+                        f"{header}\n\n*{escaped_title}*\n{url}",
+                    )
+                    if message:
                         message_ids.append((str(chat_id), message.message_id))
                         logger.info(
                             f"✅ Надіслано сповіщення про нове відео в груповий чат {chat_id}"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"❌ Помилка при надсиланні сповіщення в груповий чат {chat_id}: {e}"
                         )
 
             # Зберігаємо, що відео надіслано разом із ID повідомлень

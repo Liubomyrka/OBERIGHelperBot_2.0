@@ -18,6 +18,7 @@ async def is_admin(user_id: int) -> bool:
 
 
 async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Головне меню адміністратора з розділами."""
     logger.info(
         f"🔄 Спроба доступу до меню адміністратора від користувача {update.effective_user.id}"
     )
@@ -30,33 +31,13 @@ async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"⚠️ Спроба несанкціонованого доступу до admin_menu від користувача {user_id}"
         )
         return
-    ADMIN_MENU_TEXT = """
-    ⚙️ *Меню адміністратора*
-    Виберіть одну з доступних опцій:
-    📊 - Аналітика за 30 днів
-    👥 - Список користувачів
-    👥 - Список чатів
-    📈 - Статистика використання
-    🗑️ - Видалити повідомлення за останній день
-    🗑️ - Видалити нещодавні повідомлення (30 хв)
-    📅 - Примусово розклад
-    ⏰ - Примусово нагадування
-    🎂 - Примусово ДН
-    🔙 - Головне меню
-    """
+
+    ADMIN_MENU_TEXT = """⚙️ *Меню адміністратора*
+Виберіть категорію:"""
+
     keyboard = [
-        [KeyboardButton("📊 Аналітика за 30 днів")],
-        [KeyboardButton("👥 Список користувачів"), KeyboardButton("👥 Список чатів")],
-        [KeyboardButton("📈 Статистика використання")],
-        [
-            KeyboardButton("🗑️ Видалити повідомлення"),
-            KeyboardButton("🗑️ Видалити за 30 хв"),
-        ],
-        [
-            KeyboardButton("📅 Примусово розклад"),
-            KeyboardButton("⏰ Примусово нагадування"),
-        ],
-        [KeyboardButton("🎂 Примусово ДН")],
+        [KeyboardButton("📊 Аналітика"), KeyboardButton("👥 Списки")],
+        [KeyboardButton("🗑️ Очищення"), KeyboardButton("⚡ Примусові дії")],
         [KeyboardButton("🔙 Головне меню")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -64,6 +45,56 @@ async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ADMIN_MENU_TEXT, parse_mode="Markdown", reply_markup=reply_markup
     )
     logger.info("✅ Відображено меню адміністратора")
+
+
+async def show_admin_analytics_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показує підменю аналітики."""
+    if not await is_admin(update.effective_user.id):
+        return
+    keyboard = [
+        [KeyboardButton("📊 7 днів"), KeyboardButton("📊 30 днів")],
+        [KeyboardButton("📈 Статистика")],
+        [KeyboardButton("🔙 Адмін меню")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("📊 *Обрати звіт*", parse_mode="Markdown", reply_markup=reply_markup)
+
+
+async def show_admin_lists_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показує підменю списків користувачів та чатів."""
+    if not await is_admin(update.effective_user.id):
+        return
+    keyboard = [
+        [KeyboardButton("👤 Користувачі"), KeyboardButton("💬 Чати")],
+        [KeyboardButton("🔙 Адмін меню")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("👥 *Списки*", parse_mode="Markdown", reply_markup=reply_markup)
+
+
+async def show_admin_cleanup_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показує підменю очищення повідомлень."""
+    if not await is_admin(update.effective_user.id):
+        return
+    keyboard = [
+        [KeyboardButton("🗑️ Видалити день"), KeyboardButton("🗑️ Видалити 30 хв")],
+        [KeyboardButton("🔙 Адмін меню")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("🗑️ *Очищення*", parse_mode="Markdown", reply_markup=reply_markup)
+
+
+async def show_admin_force_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показує підменю примусових дій."""
+    if not await is_admin(update.effective_user.id):
+        return
+    keyboard = [
+        [KeyboardButton("📅 Розклад"), KeyboardButton("⏰ Нагадування")],
+        [KeyboardButton("🎂 ДН")],
+        [KeyboardButton("🔙 Адмін меню")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("⚡ *Примусові дії*", parse_mode="Markdown", reply_markup=reply_markup)
 
 
 async def analytics_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -390,6 +421,10 @@ async def force_birthday_command(update: Update, context: ContextTypes.DEFAULT_T
 __all__ = [
     "is_admin",
     "admin_menu_command",
+    "show_admin_analytics_menu",
+    "show_admin_lists_menu",
+    "show_admin_cleanup_menu",
+    "show_admin_force_menu",
     "analytics_command",
     "users_list_command",
     "group_chats_list_command",

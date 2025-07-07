@@ -2,8 +2,20 @@
 
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
+from telegram.constants import ParseMode
 from utils.logger import logger
 from database import set_value, get_value
+from telegram.helpers import escape_markdown
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 import json
 from datetime import datetime
 import os
@@ -21,7 +33,7 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📝 *Напишіть нам відгук:*\n\n"
         "Це допоможе нам краще зрозуміти ваші потреби та покращити сервіс.",
-        parse_mode="Markdown",
+        parse_mode=ParseMode.MARKDOWN_V2,
     )
 
     return FEEDBACK_TEXT
@@ -33,6 +45,8 @@ async def handle_feedback_text(update: Update, context: ContextTypes.DEFAULT_TYP
     """
     user = update.effective_user
     feedback_text = update.message.text
+    escaped_feedback = escape_markdown(feedback_text, version=2)
+    escaped_username = escape_markdown(user.username or "Unknown", version=2)
 
     # Зберігаємо відгук
     try:
@@ -59,25 +73,23 @@ async def handle_feedback_text(update: Update, context: ContextTypes.DEFAULT_TYP
         admin_id = os.getenv("ADMIN_CHAT_ID")
         if admin_id:
             admin_message = (
-                f"📝 *Новий відгук від користувача:*\n"
-                f"👤 Користувач: {user.username or 'Unknown'}\n"
+                "📝 *Новий відгук від користувача:*\n"
+                f"👤 Користувач: {escaped_username}\n"
                 f"🆔 ID: {user.id}\n"
-                f"📝 Текст: {feedback_text}"
+                f"📝 Текст: {escaped_feedback}"
             )
-            await context.bot.send_message(
-                chat_id=admin_id, text=admin_message, parse_mode="Markdown"
-            )
+            await safe_send_markdown(context.bot, int(admin_id), admin_message)
 
         await update.message.reply_text(
             "✅ Дякуємо за ваш відгук! Ми обов'язково врахуємо вашу думку.",
-            parse_mode="Markdown",
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
 
     except Exception as e:
         logger.error(f"❌ Помилка при збереженні відгуку: {e}")
         await update.message.reply_text(
             "❌ Виникла помилка при збереженні відгуку. Спробуйте пізніше.",
-            parse_mode="Markdown",
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
 
     return ConversationHandler.END
@@ -95,7 +107,7 @@ async def show_my_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if user_id not in feedback_data or not feedback_data[user_id]:
             await update.message.reply_text(
-                "📝 *У вас поки немає відгуків*", parse_mode="Markdown"
+                "📝 *У вас поки немає відгуків*", parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
@@ -103,15 +115,15 @@ async def show_my_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = "📋 *Ваші відгуки:*\n\n"
         for i, feedback in enumerate(feedback_data[user_id], 1):
             date = datetime.fromisoformat(feedback["date"]).strftime("%d.%m.%Y %H:%M")
-            message += f"{i}. {date}\n{feedback['text']}\n\n"
-
-        await update.message.reply_text(message, parse_mode="Markdown")
+            text = escape_markdown(feedback['text'], version=2)
+            message += f"{i}. {date}\n{text}\n\n"
+        await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
         logger.error(f"❌ Помилка при показі відгуків: {e}")
         await update.message.reply_text(
             "❌ Виникла помилка при отриманні відгуків. Спробуйте пізніше.",
-            parse_mode="Markdown",
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
 
 

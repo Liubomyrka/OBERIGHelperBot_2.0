@@ -24,6 +24,10 @@ from handlers.reminder_handler import set_reminder, unset_reminder
 from handlers.notification_handler import toggle_video_notifications
 from handlers.admin_handler import (
     admin_menu_command,
+    show_admin_analytics_menu,
+    show_admin_lists_menu,
+    show_admin_cleanup_menu,
+    show_admin_force_menu,
     analytics_command,
     users_list_command,
     group_chats_list_command,
@@ -257,10 +261,17 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "ℹ️ Допомога",
         "▶️ YouTube",
         "🌐 Соцмережі",
+        "📝 Відгуки",
         "📩 Надіслати відгук",
         "📋 Мої відгуки",
         "⚙️ Меню адміністратора",
+        "📊 Аналітика",
+        "👥 Списки",
+        "🗑️ Очищення",
+        "⚡ Примусові дії",
         "🎵 Ноти",
+        "👤 Користувачі",
+        "💬 Чати",
         "👥 Список користувачів",
         "👥 Список чатів",
         "📋 Розклад подій",
@@ -274,11 +285,19 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔔 Увімкнути сповіщення",
         "🔕 Вимкнути сповіщення",
         "🔙 Головне меню",
+        "🗑️ Видалити день",
         "🗑️ Видалити повідомлення",
-        "🗑️ Видалити за 30 хв",
+        "🗑️ Видалити 30 хв",
         "📅 Примусово розклад",
         "⏰ Примусово нагадування",
         "🎂 Примусово ДН",
+        "📅 Розклад",
+        "⏰ Нагадування",
+        "🎂 ДН",
+        "📊 7 днів",
+        "📊 30 днів",
+        "📈 Статистика",
+        "🔙 Адмін меню",
         "📊 Аналітика за 7 днів",
         "📊 Аналітика за 30 днів",
         "📈 Статистика використання",
@@ -306,6 +325,9 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 save_bot_message(chat_id, message.message_id, "general")
                 logger.info("✅ Натиснуто кнопку '🌐 Соцмережі'")
+            elif text == "📝 Відгуки":
+                await feedback_command(update, context)
+                logger.info("✅ Натиснуто кнопку '📝 Відгуки'")
             elif text == "📩 Надіслати відгук":
                 await start_feedback(update, context)
                 logger.info("✅ Натиснуто кнопку '📩 Надіслати відгук'")
@@ -316,6 +338,22 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if await is_admin(update.effective_user.id):
                     await admin_menu_command(update, context)
                     logger.info("✅ Натиснуто кнопку '⚙️ Меню адміністратора'")
+            elif text == "📊 Аналітика":
+                if await is_admin(update.effective_user.id):
+                    await show_admin_analytics_menu(update, context)
+                    logger.info("✅ Натиснуто кнопку '📊 Аналітика'")
+            elif text == "👥 Списки":
+                if await is_admin(update.effective_user.id):
+                    await show_admin_lists_menu(update, context)
+                    logger.info("✅ Натиснуто кнопку '👥 Списки'")
+            elif text == "🗑️ Очищення":
+                if await is_admin(update.effective_user.id):
+                    await show_admin_cleanup_menu(update, context)
+                    logger.info("✅ Натиснуто кнопку '🗑️ Очищення'")
+            elif text == "⚡ Примусові дії":
+                if await is_admin(update.effective_user.id):
+                    await show_admin_force_menu(update, context)
+                    logger.info("✅ Натиснуто кнопку '⚡ Примусові дії'")
             elif text == "👥 Список користувачів":
                 if await is_admin(update.effective_user.id):
                     await users_list_command(update, context)
@@ -363,26 +401,78 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "🔙 Головне меню":
                 if chat_type == "private":
                     await show_main_menu(update, context)
+            elif text == "🔙 Адмін меню":
+                if await is_admin(update.effective_user.id):
+                    await admin_menu_command(update, context)
+                    logger.info("✅ Повернення до адмін меню")
+            elif text == "📊 7 днів":
+                if await is_admin(update.effective_user.id):
+                    context.args = ["7"]
+                    await analytics_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '📊 7 днів'")
+            elif text == "📊 30 днів":
+                if await is_admin(update.effective_user.id):
+                    context.args = ["30"]
+                    await analytics_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '📊 30 днів'")
+            elif text == "📈 Статистика":
+                if await is_admin(update.effective_user.id):
+                    stats = json.loads(get_value("commands_stats") or "{}")
+                    message_text = "📈 *Статистика використання команд:*\n\n"
+                    for date, commands in stats.items():
+                        message_text += f"📅 *{date}:*\n"
+                        for command, count in commands.items():
+                            message_text += f"/{command}: {count} разів\n"
+                        message_text += "\n"
+                    message = await update.message.reply_text(
+                        message_text, parse_mode="Markdown"
+                    )
+                    save_bot_message(chat_id, message.message_id, "general")
+                    logger.info("✅ Натиснуто кнопку '📈 Статистика'")
             elif text == "🗑️ Видалити повідомлення":
                 if await is_admin(update.effective_user.id):
                     await delete_messages(update, context)
                     logger.info("✅ Виконано команду '🗑️ Видалити повідомлення'")
-            elif text == "🗑️ Видалити за 30 хв":
+            elif text == "🗑️ Видалити день":
+                if await is_admin(update.effective_user.id):
+                    await delete_messages(update, context)
+                    logger.info("✅ Виконано команду '🗑️ Видалити день'")
+            elif text == "🗑️ Видалити 30 хв":
                 if await is_admin(update.effective_user.id):
                     await delete_recent(update, context)
                     logger.info("✅ Виконано команду '🗑️ Видалити за 30 хв'")
+            elif text == "👤 Користувачі":
+                if await is_admin(update.effective_user.id):
+                    await users_list_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '👤 Користувачі'")
+            elif text == "💬 Чати":
+                if await is_admin(update.effective_user.id):
+                    await group_chats_list_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '💬 Чати'")
             elif text == "📅 Примусово розклад":
                 if await is_admin(update.effective_user.id):
                     await force_daily_reminder_command(update, context)
                     logger.info("✅ Натиснуто кнопку '📅 Примусово розклад'")
+            elif text == "📅 Розклад":
+                if await is_admin(update.effective_user.id):
+                    await force_daily_reminder_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '📅 Розклад'")
             elif text == "⏰ Примусово нагадування":
                 if await is_admin(update.effective_user.id):
                     await force_hourly_reminder_command(update, context)
                     logger.info("✅ Натиснуто кнопку '⏰ Примусово нагадування'")
+            elif text == "⏰ Нагадування":
+                if await is_admin(update.effective_user.id):
+                    await force_hourly_reminder_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '⏰ Нагадування'")
             elif text == "🎂 Примусово ДН":
                 if await is_admin(update.effective_user.id):
                     await force_birthday_command(update, context)
                     logger.info("✅ Натиснуто кнопку '🎂 Примусово ДН'")
+            elif text == "🎂 ДН":
+                if await is_admin(update.effective_user.id):
+                    await force_birthday_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '🎂 ДН'")
             elif text == "📊 Аналітика за 7 днів":
                 if await is_admin(update.effective_user.id):
                     context.args = ["7"]
@@ -504,14 +594,13 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     """Повертає клавіатуру головного меню з урахуванням ролі користувача."""
     keyboard = [
-        [KeyboardButton("📅 Розклад"), KeyboardButton("▶️ YouTube")],
-        [KeyboardButton("🎵 Ноти"), KeyboardButton("🌐 Соцмережі")],
-        [KeyboardButton("📩 Надіслати відгук"), KeyboardButton("📋 Мої відгуки")],
-        [KeyboardButton("ℹ️ Допомога"), KeyboardButton("🔙 Головне меню")],
+        [KeyboardButton("📅 Розклад"), KeyboardButton("🎵 Ноти")],
+        [KeyboardButton("▶️ YouTube"), KeyboardButton("🌐 Соцмережі")],
+        [KeyboardButton("📝 Відгуки"), KeyboardButton("ℹ️ Допомога")],
     ]
     # Додаємо кнопку "⚙️ Меню адміністратора" для адміністраторів
     if await is_admin(user_id):
-        keyboard.insert(4, [KeyboardButton("⚙️ Меню адміністратора")])
+        keyboard.append([KeyboardButton("⚙️ Меню адміністратора")])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
 
