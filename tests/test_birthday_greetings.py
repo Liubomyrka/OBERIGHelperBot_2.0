@@ -239,6 +239,14 @@ def test_extract_birthday_name(monkeypatch, stub_dependencies):
     assert module.extract_birthday_name(summary) == 'Таміла'
 
 
+def test_extract_birthday_name_with_surname(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    summary = 'Таміла Романченко – день народження'
+    assert module.extract_birthday_name(summary) == 'Таміла'
+
+
 def test_startup_birthday_check_runs_any_time(monkeypatch, stub_dependencies):
     module = importlib.import_module('handlers.reminder_handler')
     importlib.reload(module)
