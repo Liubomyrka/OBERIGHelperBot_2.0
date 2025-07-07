@@ -171,6 +171,8 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
                 event_time = event.get('start', {}).get('dateTime', event.get('start', {}).get('date', ''))
                 if event_time and 'T' in event_time:
                     event_time = datetime.fromisoformat(event_time.replace('Z', '+00:00')).astimezone(berlin_tz).strftime('%H:%M')
+                elif event_time:
+                    event_time = escape_markdown("(весь день)", version=2)
                 summary = escape_markdown(event.get('summary', 'Без назви'), version=2)
                 text = f"📅 *{summary}*"
                 if event_time:
