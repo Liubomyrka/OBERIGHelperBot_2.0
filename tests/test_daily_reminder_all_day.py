@@ -107,6 +107,8 @@ def test_all_day_event_parsing(monkeypatch, stub_dependencies):
     asyncio.run(module.send_daily_reminder(context))
 
     assert context.bot.send_message.await_count == 2
+    header_args, header_kwargs = context.bot.send_message.await_args_list[0]
+    assert '1 подія' in header_kwargs['text']
     args, kwargs = context.bot.send_message.await_args_list[1]
     assert '\\(весь день\\)' in kwargs['text']
     assert kwargs['parse_mode'] == tg.constants.ParseMode.MARKDOWN_V2
