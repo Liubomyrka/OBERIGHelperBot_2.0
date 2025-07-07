@@ -373,6 +373,35 @@ def inflect_to_dative(name: str) -> str:
         return name[:-1] + "ю"
     return name + "у"
 
+
+def extract_birthday_name(summary: str) -> str:
+    """Extract the celebrant's name from a calendar event summary."""
+    try:
+        import re
+
+        cleaned = summary.replace("\u2013", "-").replace("\u2014", "-").strip()
+
+        # Pattern: "день народження Name"
+        match = re.search(
+            r"день народження[:\s-]*([\w'’\-\u0400-\u04FF]+)",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            return match.group(1)
+
+        # Pattern: "Name - день народження"
+        match = re.match(r"(.+?)\s*-\s*день народження", cleaned, flags=re.IGNORECASE)
+        if match:
+            candidate = match.group(1)
+            parts = re.findall(r"[\w'’\-\u0400-\u04FF]+", candidate)
+            if parts:
+                return parts[-1]
+    except Exception:
+        pass
+
+    return "співоча зірка"
+
 async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
     try:
         dative_name = inflect_to_dative(name)
@@ -456,19 +485,15 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE):
     # Збираємо всі привітання для збереження в базі
     greetings_to_save = []
     for event in events:
-        summary = event.get('summary', '').lower()
+        raw_summary = event.get("summary", "")
+        summary = raw_summary.lower()
         logger.debug(f"Обробка події: {summary}")
 
-        if 'день народження' not in summary:
+        if "день народження" not in summary:
             logger.debug(f"Подія '{summary}' пропущена, не є днем народження")
             continue
 
-        name = "співоча зірка"  # За замовчуванням
-        if " – день народження" in summary:
-            name = summary.split(" – день народження")[0].strip().split()[0]
-        elif "день народження" in summary:
-            name_part = summary.split('день народження')[1].strip()
-            name = name_part.split()[0] if name_part else "співоча зірка"
+        name = extract_birthday_name(raw_summary)
 
         logger.info(f"Знайдено день народження: {name}")
         greeting = await generate_birthday_greeting(name, greeting_type)
