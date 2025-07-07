@@ -5,6 +5,11 @@ from telegram.ext import ContextTypes
 from utils.logger import logger
 from utils.analytics import Analytics
 from database import save_bot_message, get_value, set_value, get_cursor
+from handlers.reminder_handler import (
+    send_daily_reminder,
+    send_event_reminders,
+    check_birthday_greetings,
+)
 
 
 async def is_admin(user_id: int) -> bool:
@@ -34,6 +39,9 @@ async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     📈 - Статистика використання
     🗑️ - Видалити повідомлення за останній день
     🗑️ - Видалити нещодавні повідомлення (30 хв)
+    📅 - Примусово розклад
+    ⏰ - Примусово нагадування
+    🎂 - Примусово ДН
     🔙 - Головне меню
     """
     keyboard = [
@@ -44,6 +52,11 @@ async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             KeyboardButton("🗑️ Видалити повідомлення"),
             KeyboardButton("🗑️ Видалити за 30 хв"),
         ],
+        [
+            KeyboardButton("📅 Примусово розклад"),
+            KeyboardButton("⏰ Примусово нагадування"),
+        ],
+        [KeyboardButton("🎂 Примусово ДН")],
         [KeyboardButton("🔙 Головне меню")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -327,6 +340,53 @@ async def delete_recent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_bot_message(str(update.effective_chat.id), message.message_id, "general")
 
 
+async def force_daily_reminder_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await is_admin(user_id):
+        await update.message.reply_text(
+            "❌ *Ця команда доступна тільки адміністратору.*",
+            parse_mode="Markdown",
+        )
+        logger.warning(
+            f"⚠️ Спроба несанкціонованого доступу до force_daily_reminder від користувача {user_id}"
+        )
+        return
+    await send_daily_reminder(context, force=True)
+    await update.message.reply_text("✅ Щоденне нагадування надіслано примусово.")
+    logger.info(f"✅ Адміністратор {user_id} примусово відправив щоденне нагадування")
+
+
+async def force_hourly_reminder_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await is_admin(user_id):
+        await update.message.reply_text(
+            "❌ *Ця команда доступна тільки адміністратору.*",
+            parse_mode="Markdown",
+        )
+        logger.warning(
+            f"⚠️ Спроба несанкціонованого доступу до force_hourly_reminder від користувача {user_id}"
+        )
+        return
+    await send_event_reminders(context, force=True)
+    await update.message.reply_text("✅ Годинне нагадування надіслано примусово.")
+    logger.info(f"✅ Адміністратор {user_id} примусово відправив годинне нагадування")
+
+
+async def force_birthday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await is_admin(user_id):
+        await update.message.reply_text(
+            "❌ *Ця команда доступна тільки адміністратору.*",
+            parse_mode="Markdown",
+        )
+        logger.warning(
+            f"⚠️ Спроба несанкціонованого доступу до force_birthday від користувача {user_id}"
+        )
+        return
+    await check_birthday_greetings(context, force=True)
+    await update.message.reply_text("✅ Вітання з днем народження надіслано примусово.")
+    logger.info(f"✅ Адміністратор {user_id} примусово відправив вітання з днем народження")
+
 __all__ = [
     "is_admin",
     "admin_menu_command",
@@ -335,4 +395,7 @@ __all__ = [
     "group_chats_list_command",
     "delete_messages",
     "delete_recent",
+    "force_daily_reminder_command",
+    "force_hourly_reminder_command",
+    "force_birthday_command",
 ]
