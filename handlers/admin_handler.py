@@ -39,6 +39,9 @@ async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     📈 - Статистика використання
     🗑️ - Видалити повідомлення за останній день
     🗑️ - Видалити нещодавні повідомлення (30 хв)
+    📅 - Примусово розклад
+    ⏰ - Примусово нагадування
+    🎂 - Примусово ДН
     🔙 - Головне меню
     """
     keyboard = [
@@ -49,6 +52,11 @@ async def admin_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             KeyboardButton("🗑️ Видалити повідомлення"),
             KeyboardButton("🗑️ Видалити за 30 хв"),
         ],
+        [
+            KeyboardButton("📅 Примусово розклад"),
+            KeyboardButton("⏰ Примусово нагадування"),
+        ],
+        [KeyboardButton("🎂 Примусово ДН")],
         [KeyboardButton("🔙 Головне меню")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
