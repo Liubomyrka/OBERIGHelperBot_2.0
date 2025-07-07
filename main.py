@@ -421,13 +421,15 @@ def log_and_execute_command(handler):
 
 if __name__ == "__main__":
     nest_asyncio.apply()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        asyncio.run(main())
+        loop.run_until_complete(main())
     except Conflict as conflict_error:
         logger.error(f"Bot Conflict Error: {conflict_error}")
         logger.error("Ensure only one bot instance is running. Waiting and retrying...")
         time.sleep(5)
-        asyncio.run(main())
+        loop.run_until_complete(main())
     except Exception as e:
         logger.error(f"Unexpected error during bot startup: {e}")
         raise

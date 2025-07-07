@@ -16,6 +16,16 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 from handlers.schedule_handler import _generate_short_id, _cache_event_id
 
 from utils import (
@@ -160,18 +170,14 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = 
 
         sent_any = False
         for chat_id in active_chats:
-            try:
-                message = await context.bot.send_message(
-                    chat_id=int(chat_id),
-                    text=f"*{header_text}*",
-                    parse_mode=ParseMode.MARKDOWN_V2,
-                )
+            message = await safe_send_markdown(
+                context.bot,
+                int(chat_id),
+                f"*{header_text}*",
+            )
+            if message:
                 save_bot_message(chat_id, message.message_id, "daily_reminder")
                 sent_any = True
-            except Exception as e:
-                logger.warning(
-                    f"⚠️ Не вдалося надіслати щоденне нагадування в чат {chat_id}: {e}"
-                )
 
         for event in events:
             try:
@@ -199,19 +205,15 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = 
                 markup = InlineKeyboardMarkup(buttons)
 
                 for chat_id in active_chats:
-                    try:
-                        message = await context.bot.send_message(
-                            chat_id=int(chat_id),
-                            text=text,
-                            parse_mode=ParseMode.MARKDOWN_V2,
-                            reply_markup=markup,
-                        )
+                    message = await safe_send_markdown(
+                        context.bot,
+                        int(chat_id),
+                        text,
+                        reply_markup=markup,
+                    )
+                    if message:
                         save_bot_message(chat_id, message.message_id, "daily_reminder")
                         sent_any = True
-                    except Exception as e:
-                        logger.warning(
-                            f"⚠️ Не вдалося надіслати щоденне нагадування в чат {chat_id}: {e}"
-                        )
 
             except Exception as e:
                 logger.error(f"❌ Помилка при обробці події в daily_reminder: {e}")
@@ -313,16 +315,16 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool =
 
             sent_success = False
             for chat_id in target_chats:
-                try:
-                    await context.bot.send_message(
-                        chat_id=int(chat_id),
-                        text=reminder_text,
-                        parse_mode=ParseMode.MARKDOWN_V2,
-                        disable_web_page_preview=True,
-                    )
+                message = await safe_send_markdown(
+                    context.bot,
+                    int(chat_id),
+                    reminder_text,
+                    disable_web_page_preview=True,
+                )
+                if message:
                     sent_success = True
-                except Exception as e:
-                    logger.warning(f"⚠️ Не вдалося надіслати повідомлення в чат {chat_id}: {e}")
+                else:
+                    logger.warning(f"⚠️ Не вдалося надіслати повідомлення в чат {chat_id}")
 
             if sent_success:
                 db.save_event_reminder_hash(event_id, reminder_type, reminder_hash)
@@ -522,12 +524,15 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE, force: bo
 
         # Надсилаємо привітання в усі активні чати
         for group_chat_id in active_group_chats:
-            await context.bot.send_message(
-                chat_id=int(group_chat_id),
-                text=greeting,
-                parse_mode=ParseMode.MARKDOWN_V2,
+            message = await safe_send_markdown(
+                context.bot,
+                int(group_chat_id),
+                greeting,
             )
-            logger.info(f"Надіслано {greeting_type} привітання для {name} у чат {group_chat_id}")
+            if message:
+                logger.info(
+                    f"Надіслано {greeting_type} привітання для {name} у чат {group_chat_id}"
+                )
 
         # Зберігаємо привітання для запису в базу
         greetings_to_save.append({
