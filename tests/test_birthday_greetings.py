@@ -147,7 +147,8 @@ def test_check_birthday_greetings_sends_and_stores(monkeypatch, stub_dependencie
     context.bot.send_message.assert_awaited_once()
     args, kwargs = context.bot.send_message.await_args
     assert kwargs['parse_mode'] == module.ParseMode.MARKDOWN_V2
-    assert '\\' not in kwargs['text']
+    assert '\\#Оберіг' in kwargs['text']
+    assert '\\#ДеньНародження' in kwargs['text']
 
     rows = conn.execute('SELECT * FROM birthday_greetings').fetchall()
     assert len(rows) == 1

@@ -403,7 +403,7 @@ async def generate_birthday_greeting(name: str, time_of_day: str) -> str:
         if not any(emoji in greeting for emoji in ["🎵", "🎂", "😊", "🎉"]):
             greeting = f"{greeting} 🎵🎂😊"
         if '#Оберіг' not in greeting:
-            greeting += " #Оберіг #ДеньНародження"
+            greeting += r" \#Оберіг \#ДеньНародження"
 
         if len(greeting) > 4096:
             greeting = greeting[:4090] + "..."
