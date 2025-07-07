@@ -136,13 +136,9 @@ async def show_youtube_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         keyboard = [
             [KeyboardButton("📺 Наші відео")],
-            [KeyboardButton("🆕 Найновше відео")],
-            [KeyboardButton("🔥 Найпопулярніше відео")],
+            [KeyboardButton("🆕 Найновше відео"), KeyboardButton("🔥 Найпопулярніше відео")],
             [KeyboardButton("🏆 Топ-10 відео")],
-            [
-                KeyboardButton("🔔 Увімкнути сповіщення"),
-                KeyboardButton("🔕 Вимкнути сповіщення"),
-            ],
+            [KeyboardButton("🔔 Увімкнути сповіщення"), KeyboardButton("🔕 Вимкнути сповіщення")],
             [KeyboardButton("🔙 Головне меню")],
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
