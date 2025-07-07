@@ -202,3 +202,23 @@ def test_fallback_uses_dative(monkeypatch, stub_dependencies):
     greeting = asyncio.run(module.generate_birthday_greeting('Галина', 'morning'))
     assert 'Галині' in greeting
 
+
+def test_startup_birthday_check_runs_any_time(monkeypatch, stub_dependencies):
+    module = importlib.import_module('handlers.reminder_handler')
+    importlib.reload(module)
+
+    run_mock = AsyncMock()
+    monkeypatch.setattr(module, 'check_birthday_greetings', run_mock)
+
+    class FakeDT(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.datetime(2024, 1, 1, 14, 0, tzinfo=datetime.timezone.utc)
+
+    monkeypatch.setattr(module, 'datetime', FakeDT)
+
+    context = types.SimpleNamespace()
+    asyncio.run(module.startup_birthday_check(context))
+
+    run_mock.assert_awaited_once_with(context)
+

@@ -146,8 +146,15 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         
         active_chats = get_active_chats()
 
+        def _pluralize_events(n: int) -> str:
+            if n % 10 == 1 and n % 100 != 11:
+                return "подія"
+            if 2 <= n % 10 <= 4 and (n % 100 < 10 or n % 100 >= 20):
+                return "події"
+            return "подій"
+
         header_text = escape_markdown(
-            f"🔔 Розклад подій на сьогодні, {current_date.day:02d} {current_date.strftime('%B').lower()} – {len(events)} подій",
+            f"🔔 Розклад подій на сьогодні, {current_date.day:02d} {current_date.strftime('%B').lower()} – {len(events)} {_pluralize_events(len(events))}",
             version=2,
         )
 
@@ -171,6 +178,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
                 event_time = event.get('start', {}).get('dateTime', event.get('start', {}).get('date', ''))
                 if event_time and 'T' in event_time:
                     event_time = datetime.fromisoformat(event_time.replace('Z', '+00:00')).astimezone(berlin_tz).strftime('%H:%M')
+                    event_time = escape_markdown(event_time, version=2)
                 elif event_time:
                     event_time = escape_markdown("(весь день)", version=2)
                 summary = escape_markdown(event.get('summary', 'Без назви'), version=2)
@@ -331,34 +339,8 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def startup_birthday_check(context: ContextTypes.DEFAULT_TYPE):
-    now = datetime.now(berlin_tz)
-    today = now.date()
-    current_hour = now.hour
-
-    # Визначаємо період: ранковий (9:00–12:00) або вечірній (20:00–23:00)
-    is_morning_period = 9 <= current_hour < 12
-    is_evening_period = 20 <= current_hour < 23
-
-    if not (is_morning_period or is_evening_period):
-        logger.info("⏰ Зараз не час для надсилання вітань при запуску (не в ранковому чи вечірньому періоді).")
-        return
-
-    greeting_type = 'morning' if is_morning_period else 'evening'
-
-    # Перевіряємо, чи нагадування вже було надіслане для цього періоду
-    with get_cursor() as cursor:
-        cursor.execute("""
-            SELECT id FROM birthday_greetings 
-            WHERE date_sent = ? AND greeting_type = ?
-        """, (today.isoformat(), greeting_type))
-        already_sent = cursor.fetchone() is not None
-
-    if already_sent:
-        logger.info(f"ℹ️ Нагадування про день народження вже надіслане ({greeting_type}) на {today} при запуску")
-        return
-
-    # Якщо нагадування ще не надсилалося, викликаємо check_birthday_greetings
-    logger.info(f"🔄 Запуск перевірки днів народження при старті бота ({greeting_type})")
+    """Check for birthdays when the bot starts, regardless of the time."""
+    logger.info("🔄 Запуск перевірки днів народження при старті бота")
     await check_birthday_greetings(context)
 
 

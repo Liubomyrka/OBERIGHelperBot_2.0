@@ -100,5 +100,7 @@ def test_send_daily_reminder_sends_multiple(monkeypatch, stub_dependencies):
     asyncio.run(module.send_daily_reminder(context))
 
     assert context.bot.send_message.await_count == 3
+    header_args, header_kwargs = context.bot.send_message.await_args_list[0]
+    assert '2 події' in header_kwargs['text']
     args0, kwargs0 = context.bot.send_message.await_args_list[1]
     assert kwargs0['reply_markup'].inline_keyboard
