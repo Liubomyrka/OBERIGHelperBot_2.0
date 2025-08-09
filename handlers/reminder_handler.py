@@ -591,6 +591,11 @@ def schedule_birthday_greetings(job_queue: JobQueue):
         time=time(hour=20, minute=0, tzinfo=berlin_tz),
         days=(0, 1, 2, 3, 4, 5, 6)
     )
+    job_queue.run_repeating(
+        check_birthday_greetings,
+        interval=timedelta(hours=4),
+        first=0,
+    )
     # Додаємо очищення старих записів
     schedule_cleanup(job_queue)
     logger.info("✅ Планування перевірок днів народження на 9:00 і 20:00 (з перевіркою при запуску) налаштовано.")
