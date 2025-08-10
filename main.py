@@ -1,6 +1,7 @@
 import os
 import asyncio
 import nest_asyncio
+import httpx
 from telegram import (
     Update,
     BotCommandScopeAllPrivateChats,
@@ -213,6 +214,10 @@ async def main():
         set_value("video_notifications_disabled", json.dumps({}))
 
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    try:
+        logger.info(f"Using Telegram API URL: {application.bot.base_url}")
+    except Exception:
+        logger.debug("Unable to determine Telegram API URL")
 
     # Налаштування команд для різних типів чатів
     private_commands = [
@@ -429,13 +434,25 @@ if __name__ == "__main__":
     nest_asyncio.apply()
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(main())
-    except Conflict as conflict_error:
-        logger.error(f"Bot Conflict Error: {conflict_error}")
-        logger.error("Ensure only one bot instance is running. Waiting and retrying...")
-        time.sleep(5)
-        loop.run_until_complete(main())
-    except Exception as e:
-        logger.error(f"Unexpected error during bot startup: {e}")
-        raise
+
+    delay = 1
+    max_delay = 60
+
+    while True:
+        try:
+            loop.run_until_complete(main())
+            break
+        except httpx.ConnectError as connect_error:
+            url = getattr(getattr(connect_error, "request", None), "url", "unknown")
+            logger.error(f"Connection error while requesting {url}: {connect_error}")
+            logger.info("Reinitializing client and retrying...")
+            logger.info(f"Retrying in {delay} seconds...")
+            time.sleep(delay)
+            delay = min(delay * 2, max_delay)
+        except Conflict as conflict_error:
+            logger.error(f"Bot Conflict Error: {conflict_error}")
+            logger.error("Ensure only one bot instance is running. Waiting and retrying...")
+            time.sleep(5)
+        except Exception as e:
+            logger.error(f"Unexpected error during bot startup: {e}")
+            raise
