@@ -27,6 +27,7 @@ from handlers.schedule_handler import (
     event_details_callback,
 )
 from handlers.reminder_handler import schedule_event_reminders
+from handlers.cleanup_handler import clear_bot_messages
 from utils.logger import logger
 from database import init_db
 
@@ -143,8 +144,12 @@ async def set_bot_commands(application):
         BotCommand("latest_video", "▶️ Останнє відео YouTube"),
         BotCommand("help", "ℹ️ Допомога"),
         BotCommand("feedback", "📩 Надіслати відгук"),
+        BotCommand("clear", "🧹 Очистити повідомлення бота"),
     ]
-    group_commands = [BotCommand("start", "👋 Вітання та інструкція")]
+    group_commands = [
+        BotCommand("start", "👋 Вітання та інструкція"),
+        BotCommand("clear", "🧹 Очистити повідомлення бота"),
+    ]
 
     await application.bot.set_my_commands(private_commands, scope=BotCommandScopeAllPrivateChats())
     await application.bot.set_my_commands(group_commands, scope=BotCommandScopeAllGroupChats())
@@ -170,6 +175,7 @@ async def main():
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(CommandHandler("latest_video", latest_video_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
+    application.add_handler(CommandHandler("clear", clear_bot_messages))
     application.add_error_handler(error_handler)
 
     schedule_event_reminders(application.job_queue)
