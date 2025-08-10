@@ -29,6 +29,7 @@ from handlers.schedule_handler import (
 from handlers.reminder_handler import schedule_event_reminders
 from utils.logger import logger
 from database import init_db
+from handlers.birthday_handler import birthday_command, clear_messages
 
 
 # 🛡️ Завантаження змінних середовища
@@ -97,6 +98,10 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.info("✅ Натиснуто кнопку '🌐 Соцмережі'")
         elif text.startswith("/feedback"):
             await feedback_command(update, context)
+        elif text.startswith("/birthday"):
+            await birthday_command(update, context)
+        elif text.startswith("/clear"):
+            await clear_messages(update, context)
         else:
             logger.warning(f"⚠️ Невідома текстова команда: {text}")
             await update.message.reply_text("❌ Невідома команда. Скористайтесь доступними кнопками.")
@@ -143,6 +148,8 @@ async def set_bot_commands(application):
         BotCommand("latest_video", "▶️ Останнє відео YouTube"),
         BotCommand("help", "ℹ️ Допомога"),
         BotCommand("feedback", "📩 Надіслати відгук"),
+        BotCommand("birthday", "🎉 Вітання з днем народження"),
+        BotCommand("clear", "🗑️ Очистити повідомлення"),
     ]
     group_commands = [BotCommand("start", "👋 Вітання та інструкція")]
 
@@ -170,6 +177,8 @@ async def main():
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(CommandHandler("latest_video", latest_video_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
+    application.add_handler(CommandHandler("birthday", birthday_command))
+    application.add_handler(CommandHandler("clear", clear_messages))
     application.add_error_handler(error_handler)
 
     schedule_event_reminders(application.job_queue)
