@@ -31149,3 +31149,4 @@ telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo faile
 2025-08-26 13:43:58 - OBERIGHelperBot - INFO - main.py:299 - Успішно налаштовано команди з меню Telegram
 2025-08-26 13:43:58 - OBERIGHelperBot - ERROR - main.py:459 - Unexpected error during bot startup: 'NoneType' object has no attribute 'run_repeating'
 2025-08-26 14:08:35 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
+2025-08-26 15:48:45 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
