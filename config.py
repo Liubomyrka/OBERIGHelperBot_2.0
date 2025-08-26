@@ -59,4 +59,4 @@ print(f"GOOGLE_CREDENTIALS: ✅ Конфігурація успішно зава
 print(f"CALENDAR_ID: ✅ Конфігурація успішно завантажена.")
 print(f"TIMEZONE: {TIMEZONE}")
 print(f"YOUTUBE_API_KEY: ✅ Конфігурація успішно завантажена.")
-print(f"OBERIG_PLAYLIST_ID: {OBERIG_PLAYLIST_ID}")
+print("OBERIG_PLAYLIST_ID: ✅ Конфігурація успішно завантажена.")
