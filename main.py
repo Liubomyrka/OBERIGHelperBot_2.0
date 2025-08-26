@@ -27,6 +27,8 @@ from handlers.start_handler import (
     button_click,
     auto_add_user,
     redirect_to_private,
+    category_callback,  # Added import for category_callback
+    rating_callback,    # Added import for rating_callback
 )
 from handlers.youtube_menu import (
     latest_video_command,
