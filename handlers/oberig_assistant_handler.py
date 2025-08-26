@@ -54,9 +54,16 @@ async def search_chat_content(
     """
     Шукає повідомлення і файли в історії чату за ключовим словом.
     """
+ codex/analyze-project-launch-issues-p7dfd1
+    messages = []
+    async for message in update.effective_chat.get_history(limit=50):
+        messages.append(message)
+    # Зменшено до 50 для економії ресурсів
+
     messages = [
         message async for message in update.effective_chat.get_history(limit=50)
     ]  # Зменшено до 50 для економії ресурсів
+ clean-main
     results = []
 
     for message in messages:
