@@ -17,6 +17,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
     ConversationHandler,
+    JobQueue,
 )
 from handlers.start_handler import (
     start,
@@ -215,7 +216,13 @@ async def main():
     if video_notifications is None:
         set_value("video_notifications_disabled", json.dumps({}))
 
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    job_queue = JobQueue()
+    application = (
+        ApplicationBuilder()
+        .token(TELEGRAM_TOKEN)
+        .job_queue(job_queue)
+        .build()
+    )
     try:
         logger.info(f"Using Telegram API URL: {application.bot.base_url}")
     except Exception:
@@ -402,8 +409,7 @@ async def main():
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    schedule_event_reminders(application.job_queue)
-    job_queue = application.job_queue
+    schedule_event_reminders(job_queue)
     job_queue.run_once(
         startup_daily_reminder,
         when=10,
@@ -412,7 +418,7 @@ async def main():
     job_queue.run_repeating(check_and_notify_new_videos, interval=1800, first=10)
 
     create_birthday_greetings_table()
-    schedule_birthday_greetings(application.job_queue)
+    schedule_birthday_greetings(job_queue)
 
     await application.run_polling(allowed_updates=Update.ALL_TYPES)
     logger.info("Бот запущено успішно!")

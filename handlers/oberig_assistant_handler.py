@@ -54,16 +54,16 @@ async def search_chat_content(
     """
     Шукає повідомлення і файли в історії чату за ключовим словом.
     """
- codex/analyze-project-launch-issues-p7dfd1
+    повідомлення = []
+    асинхронізація для повідомлення в update.effective_chat.get_history(limit= 50 ):
+ 
+        messages.append(повідомлення)
+    # Зменшено до 50 для економії ресурсів
     messages = []
     async for message in update.effective_chat.get_history(limit=50):
         messages.append(message)
     # Зменшено до 50 для економії ресурсів
 
-    messages = [
-        message async for message in update.effective_chat.get_history(limit=50)
-    ]  # Зменшено до 50 для економії ресурсів
- clean-main
     results = []
 
     for message in messages:
@@ -224,7 +224,7 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             ]
         )
 
-        # \u041e\u0431\u0440\u043e\u0431\u043b\u044f\u0454\u043c\u043e \u0437\u0430\u043f\u0438\u0442 \u043f\u0440\u043e \u043c\u0438\u043d\u0443\u043b\u0456 \u043f\u043e\u0434\u0456\u0457
+        # Обробляємо запит про минулі події
         past_events = None
         last_event_info = ""
         past_count_info = ""
@@ -232,7 +232,7 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
 
         if any(word in user_message for word in ["останн", "минул"]):
             past_events = get_past_events_cached(max_results=50)
-            # \u0441\u043f\u0440\u043e\u0431\u0443\u0454\u043c\u043e \u0432\u0438\u0434\u0456\u043b\u0438\u0442\u0438 \u043a\u043b\u044e\u0447\u043e\u0432\u0435 \u0441\u043b\u043e\u0432\u043e \u043f\u0456\u0441\u043b\u044f "\u0432 "
+            # спробуємо виділити ключове слово після "в "
             import re
 
             m = re.search(r"[вв]\s+([\w\s\u0400-\u04FF]+)", user_message)
@@ -301,7 +301,7 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             "🌐 Facebook: https://www.facebook.com/profile.php?id=100094519583534"
         )
 
-        # \u0421\u0442\u0432\u043e\u0440\u044e\u0454\u043c\u043e dynamic_prompt \u0437 \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u043c \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u043e\u043c
+        # Створюємо dynamic_prompt з максимально коротким контекстом
         dynamic_prompt = f"{OBERIG_SYSTEM_PROMPT}\n\nДані для відповіді:"
         dynamic_prompt += f"\n- Події: {calendar_context}"
         dynamic_prompt += f"\n- Репетиції: {rehearsal_events}"
