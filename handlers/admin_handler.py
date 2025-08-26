@@ -191,7 +191,7 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Отримуємо повідомлення за останній день
             cursor.execute(
                 """
-                SELECT chat_id, message_id FROM bot_messages 
+                SELECT chat_id, message_id, message_type FROM bot_messages
                 WHERE sent_at >= datetime('now', '-1 day')
             """
             )
@@ -199,7 +199,7 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             deleted_count = 0
             failed_count = 0
-            for chat_id, message_id in bot_messages:
+            for chat_id, message_id, message_type in bot_messages:
                 try:
                     await context.bot.delete_message(
                         chat_id=int(chat_id), message_id=int(message_id)
@@ -216,8 +216,8 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 finally:
                     # Видаляємо запис із бази, незалежно від результату
                     cursor.execute(
-                        "DELETE FROM bot_messages WHERE chat_id = ? AND message_id = ?",
-                        (chat_id, message_id),
+                        "DELETE FROM bot_messages WHERE chat_id = ? AND message_id = ? AND message_type = ?",
+                        (chat_id, message_id, message_type),
                     )
 
             if deleted_count == 0 and failed_count == 0:
