@@ -31150,3 +31150,46 @@ telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo faile
 2025-08-26 13:43:58 - OBERIGHelperBot - ERROR - main.py:459 - Unexpected error during bot startup: 'NoneType' object has no attribute 'run_repeating'
 2025-08-26 14:08:35 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
 2025-08-26 15:48:45 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
+2025-08-26 16:15:16 - OBERIGHelperBot - INFO - logger.py:36 - Логер успішно налаштовано. Логи записуються у консоль і файл.
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - main.py:172 - Запуск основного додатка...
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - main.py:178 - Використовуємо існуючу базу bot_data.db
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - database.py:18 - 🔗 Підключення до бази даних: h:\Мій диск\Особисте\БОТ\OBERIGHelperBot_broken\OBERIGHelperBot_2.0\bot_data.db
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - database.py:211 - ✅ Таблиця event_reminder_hashes створена або вже існує.
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - database.py:214 - 🎉 Міграцію бази даних завершено успішно
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 611511159 до списку users_with_reminders
+2025-08-26 16:15:18 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 611511159 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5958401204 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 5958401204 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 7205393686 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 7205393686 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 7322553297 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 7322553297 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5254584917 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 5254584917 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 1564008807 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 1564008807 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5252127781 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 5252127781 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 479923026 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 479923026 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 6856414327 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 6856414327 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 622720598 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 622720598 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 825915413 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 825915413 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:230 - ✅ Збережено значення для ключа users_with_reminders в таблиці persistent_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - database.py:305 - ✅ Додано користувача 5480492606 до списку users_with_reminders
+2025-08-26 16:15:19 - OBERIGHelperBot - INFO - main.py:211 - ✅ Автоматично додано користувача 5480492606 до нагадувань за замовчуванням
+2025-08-26 16:15:19 - OBERIGHelperBot - ERROR - main.py:465 - Unexpected error during bot startup: To use `JobQueue`, PTB must be installed via `pip install "python-telegram-bot[job-queue]"`.
