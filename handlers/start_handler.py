@@ -645,6 +645,33 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning(f"⚠️ Невідома callback команда: {data}")
 
 
+async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Відображає ноти обраної категорії."""
+    query = update.callback_query
+    await query.answer()
+    category = query.data.split("category_", 1)[1].lower()
+    sheets = await list_sheets(context=context)
+    items = sheets.get(category)
+    if not items:
+        await query.message.reply_text(
+            "❌ Ноти цієї категорії не знайдено. #Оберіг",
+        )
+        return
+    names = "\n".join(f"📄 {item['name']}" for item in items)
+    await query.message.reply_text(
+        f"🎵 *Ноти категорії {category.title()}*:\n{names}",
+        parse_mode="Markdown",
+    )
+
+
+async def rating_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обробляє натискання на кнопку з оцінкою."""
+    query = update.callback_query
+    await query.answer("Дякуємо за оцінку!")
+    rating = query.data.split("rating_", 1)[1]
+    await query.message.reply_text(
+        f"⭐ Дякуємо за оцінку: {rating}! #Оберіг",
+    )
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -703,6 +730,8 @@ __all__ = [
     "feedback_command",
     "text_menu_handler",
     "button_click",
+    "category_callback",
+    "rating_callback",
     "redirect_to_private",
     "show_schedule_menu",
 

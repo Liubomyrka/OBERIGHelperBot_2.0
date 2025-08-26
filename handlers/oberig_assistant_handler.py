@@ -16,7 +16,7 @@ from utils.calendar_utils import (
     get_next_event,
 )
 from database import get_value, set_value
-from datetime import datetime
+from datetime import datetime, timedelta
 from handlers.drive_utils import list_sheets, send_sheet
 from handlers.notes_utils import search_notes
 from utils import (
@@ -54,10 +54,10 @@ async def search_chat_content(
     """
     Шукає повідомлення і файли в історії чату за ключовим словом.
     """
-    chat_id = update.effective_chat.id
-    messages = await context.bot.get_chat_history(
-        chat_id=chat_id, limit=50
-    )  # Зменшено до 50 для економії ресурсів
+    messages = []
+    async for message in update.effective_chat.get_history(limit=50):
+        messages.append(message)
+    # Зменшено до 50 для економії ресурсів
     results = []
 
     for message in messages:
@@ -71,7 +71,8 @@ async def search_chat_content(
             results.append(f"📸 {message.date}")
 
     if results:
-        response = f"Ось, що знайдено в чаті! ✨\n\n{'\n'.join(results[:3])} #Оберіг 😊"
+        joined = "\n".join(results[:3])
+        response = f"Ось, що знайдено в чаті! ✨\n\n{joined} #Оберіг 😊"
     else:
         response = "Вибач 😔, нічого не знайдено. Спробуй уточнити! #Оберіг 🌟"
     await update.message.reply_text(response)
@@ -217,7 +218,7 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             ]
         )
 
-        # \u041e\u0431\u0440\u043e\u0431\u043b\u044f\u0454\u043c\u043e \u0437\u0430\u043f\u0438\u0442 \u043f\u0440\u043e \u043c\u0438\u043d\u0443\u043b\u0456 \u043f\u043e\u0434\u0456\u0457
+        # Обробляємо запит про минулі події
         past_events = None
         last_event_info = ""
         past_count_info = ""
@@ -225,7 +226,7 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
 
         if any(word in user_message for word in ["останн", "минул"]):
             past_events = get_past_events_cached(max_results=50)
-            # \u0441\u043f\u0440\u043e\u0431\u0443\u0454\u043c\u043e \u0432\u0438\u0434\u0456\u043b\u0438\u0442\u0438 \u043a\u043b\u044e\u0447\u043e\u0432\u0435 \u0441\u043b\u043e\u0432\u043e \u043f\u0456\u0441\u043b\u044f "\u0432 "
+            # спробуємо виділити ключове слово після "в "
             import re
 
             m = re.search(r"[вв]\s+([\w\s\u0400-\u04FF]+)", user_message)
@@ -276,18 +277,25 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             events_range = get_events_in_range(start_dt, end_dt, keyword=keyword or None)
             past_count_info = f"{keyword}: {count_events(events_range)}"
 
-        video_context = (
-            f"🎥 Найновіше: {latest_video}\n"
-            f"⭐ Найпопулярніше: {popular_video}\n"
-            f"🔝 Топ-10: {', '.join([f'{title[:30] + '...' if len(title) > 30 else title} ({url})' for title, url, _ in (top_videos[:5] if top_videos else [])])}"  # Оновлюємо на Топ-10
-            if any([latest_video, popular_video, top_videos])
-            else ""
-        )
+        if any([latest_video, popular_video, top_videos]):
+            top_list = ", ".join(
+                [
+                    f"{(title[:30] + '...' if len(title) > 30 else title)} ({url})"
+                    for title, url, _ in (top_videos[:5] if top_videos else [])
+                ]
+            )
+            video_context = (
+                f"🎥 Найновіше: {latest_video}\n"
+                f"⭐ Найпопулярніше: {popular_video}\n"
+                f"🔝 Топ-10: {top_list}"
+            )
+        else:
+            video_context = ""
         social_context = (
             "🌐 Facebook: https://www.facebook.com/profile.php?id=100094519583534"
         )
 
-        # \u0421\u0442\u0432\u043e\u0440\u044e\u0454\u043c\u043e dynamic_prompt \u0437 \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u043c \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u043e\u043c
+        # Створюємо dynamic_prompt з максимально коротким контекстом
         dynamic_prompt = f"{OBERIG_SYSTEM_PROMPT}\n\nДані для відповіді:"
         dynamic_prompt += f"\n- Події: {calendar_context}"
         dynamic_prompt += f"\n- Репетиції: {rehearsal_events}"
