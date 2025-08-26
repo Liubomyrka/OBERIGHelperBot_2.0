@@ -323,6 +323,7 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool =
                 )
                 if message:
                     sent_success = True
+                    save_bot_message(str(chat_id), message.message_id, "hourly_reminder")
                 else:
                     logger.warning(f"⚠️ Не вдалося надіслати повідомлення в чат {chat_id}")
 
