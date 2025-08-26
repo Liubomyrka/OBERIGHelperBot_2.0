@@ -16,7 +16,7 @@ from utils.calendar_utils import (
     get_next_event,
 )
 from database import get_value, set_value
-from datetime import datetime
+from datetime import datetime, timedelta
 from handlers.drive_utils import list_sheets, send_sheet
 from handlers.notes_utils import search_notes
 from utils import (
@@ -54,10 +54,9 @@ async def search_chat_content(
     """
     Шукає повідомлення і файли в історії чату за ключовим словом.
     """
-    chat_id = update.effective_chat.id
-    messages = await context.bot.get_chat_history(
-        chat_id=chat_id, limit=50
-    )  # Зменшено до 50 для економії ресурсів
+    messages = [
+        message async for message in update.effective_chat.get_history(limit=50)
+    ]  # Зменшено до 50 для економії ресурсів
     results = []
 
     for message in messages:
@@ -71,7 +70,8 @@ async def search_chat_content(
             results.append(f"📸 {message.date}")
 
     if results:
-        response = f"Ось, що знайдено в чаті! ✨\n\n{'\n'.join(results[:3])} #Оберіг 😊"
+        joined = "\n".join(results[:3])
+        response = f"Ось, що знайдено в чаті! ✨\n\n{joined} #Оберіг 😊"
     else:
         response = "Вибач 😔, нічого не знайдено. Спробуй уточнити! #Оберіг 🌟"
     await update.message.reply_text(response)
@@ -276,13 +276,20 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             events_range = get_events_in_range(start_dt, end_dt, keyword=keyword or None)
             past_count_info = f"{keyword}: {count_events(events_range)}"
 
-        video_context = (
-            f"🎥 Найновіше: {latest_video}\n"
-            f"⭐ Найпопулярніше: {popular_video}\n"
-            f"🔝 Топ-10: {', '.join([f'{title[:30] + '...' if len(title) > 30 else title} ({url})' for title, url, _ in (top_videos[:5] if top_videos else [])])}"  # Оновлюємо на Топ-10
-            if any([latest_video, popular_video, top_videos])
-            else ""
-        )
+        if any([latest_video, popular_video, top_videos]):
+            top_list = ", ".join(
+                [
+                    f"{(title[:30] + '...' if len(title) > 30 else title)} ({url})"
+                    for title, url, _ in (top_videos[:5] if top_videos else [])
+                ]
+            )
+            video_context = (
+                f"🎥 Найновіше: {latest_video}\n"
+                f"⭐ Найпопулярніше: {popular_video}\n"
+                f"🔝 Топ-10: {top_list}"
+            )
+        else:
+            video_context = ""
         social_context = (
             "🌐 Facebook: https://www.facebook.com/profile.php?id=100094519583534"
         )
