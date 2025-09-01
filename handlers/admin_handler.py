@@ -3,6 +3,17 @@ import json
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
 from utils.logger import logger
+from telegram.constants import ParseMode
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 from utils.analytics import Analytics
 from database import save_bot_message, get_value, set_value, get_cursor
 from handlers.reminder_handler import (

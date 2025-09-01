@@ -216,13 +216,12 @@ async def main():
     if video_notifications is None:
         set_value("video_notifications_disabled", json.dumps({}))
 
-    job_queue = JobQueue()
     application = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
-        .job_queue(job_queue)
         .build()
     )
+    job_queue = application.job_queue
     try:
         logger.info(f"Using Telegram API URL: {application.bot.base_url}")
     except Exception:

@@ -20,9 +20,12 @@ def main():
         return
 
     run(["git", "add", "."])
+    # Add logs only when explicitly allowed
     log_path = os.path.join(ROOT_DIR, "bot.log")
-    if os.path.exists(log_path):
+    if os.path.exists(log_path) and os.getenv("PUSH_LOGS") == "1":
         run(["git", "add", "-f", "bot.log"])
+    elif os.path.exists(log_path):
+        print("Skipping bot.log (set PUSH_LOGS=1 to include)")
     msg = f"Local sync {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     run(["git", "commit", "-m", msg])
     run(["git", "push"])

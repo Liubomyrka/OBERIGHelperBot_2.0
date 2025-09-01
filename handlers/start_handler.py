@@ -9,6 +9,17 @@ from telegram import (
     KeyboardButton,
 )
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 from utils.logger import logger
 from database import (
     set_value,
@@ -55,6 +66,7 @@ from .youtube_menu import (
 )
 from .schedule_menu import show_schedule_menu
 from .user_utils import auto_add_user
+from .share_handler import share_latest_video, share_popular_video
 
 
 SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
@@ -658,9 +670,11 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     names = "\n".join(f"📄 {item['name']}" for item in items)
-    await query.message.reply_text(
-        f"🎵 *Ноти категорії {category.title()}*:\n{names}",
-        parse_mode="Markdown",
+    # Відправляємо безпечним способом, щоб уникнути збоїв через спецсимволи
+    await safe_send_markdown(
+        context.bot,
+        query.message.chat_id,
+        f"🎵 Ноти категорії {category.title()}:\n{names}",
     )
 
 

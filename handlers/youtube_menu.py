@@ -6,6 +6,8 @@ from telegram import (
     KeyboardButton,
 )
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 
 from utils.calendar_utils import (
     get_latest_youtube_video,
@@ -14,6 +16,16 @@ from utils.calendar_utils import (
 )
 from database import save_bot_message
 from utils.logger import logger
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 
 from .user_utils import auto_add_user
 
@@ -42,11 +54,15 @@ async def latest_video_command(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         video_url = get_latest_youtube_video()
         if video_url:
-            message = await update.message.reply_text(
-                f"🆕 *Найновіше відео хору OBERIG:*\n\n"
-                f"👆 [Переглянути відео]({video_url})\n\n"
-                "📤 Поділитися цим відео: `/share_latest`",
-                parse_mode="Markdown",
+            text = (
+                "🆕 Найновіше відео хору OBERIG:\n\n"
+                f"👆 Переглянути відео: {video_url}\n\n"
+                "📤 Поділитися цим відео: /share_latest"
+            )
+            message = await safe_send_markdown(
+                context.bot,
+                update.effective_chat.id,
+                text,
             )
             save_bot_message(
                 str(update.effective_chat.id), message.message_id, "general"
@@ -93,10 +109,10 @@ async def top_10_videos_command(update: Update, context: ContextTypes.DEFAULT_TY
         end_idx = min(start_idx + videos_per_page, len(videos))
         current_videos = videos[start_idx:end_idx]
 
-        message_text = "*🏆 Топ-10 найпопулярніших відео:*\n\n"
+        message_text = "🏆 Топ-10 найпопулярніших відео:\n\n"
         for i, (title, url, views) in enumerate(current_videos, start_idx + 1):
             title = title[:120] + "..." if len(title) > 120 else title
-            message_text += f"**{i}.** [{title}]({url})\n👁 {views:,} переглядів\n\n"
+            message_text += f"{i}. {title}\n{url}\n👁 {views:,} переглядів\n\n"
 
         message_text += f"\n📄 Сторінка {page + 1} з {total_pages}"
 
@@ -108,16 +124,18 @@ async def top_10_videos_command(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup = InlineKeyboardMarkup([keyboard]) if keyboard else None
 
         if update.callback_query:
+            # Keep editing without Markdown to avoid escaping issues
             await update.callback_query.edit_message_text(
                 message_text,
-                parse_mode="Markdown",
+                parse_mode=None,
                 disable_web_page_preview=True,
                 reply_markup=reply_markup,
             )
         else:
-            message = await update.message.reply_text(
+            message = await safe_send_markdown(
+                context.bot,
+                update.effective_chat.id,
                 message_text,
-                parse_mode="Markdown",
                 disable_web_page_preview=True,
                 reply_markup=reply_markup,
             )
@@ -164,11 +182,15 @@ async def most_popular_video_command(update: Update, context: ContextTypes.DEFAU
     try:
         video_url = get_most_popular_youtube_video()
         if video_url:
-            message = await update.message.reply_text(
-                f"🔥 *Найпопулярніше відео хору OBERIG:*\n\n"
-                f"👆 [Переглянути відео]({video_url})\n\n"
-                "📤 Поділитися цим відео: `/share_popular`",
-                parse_mode="Markdown",
+            text = (
+                "🔥 Найпопулярніше відео хору OBERIG:\n\n"
+                f"👆 Переглянути відео: {video_url}\n\n"
+                "📤 Поділитися цим відео: /share_popular"
+            )
+            message = await safe_send_markdown(
+                context.bot,
+                update.effective_chat.id,
+                text,
             )
             save_bot_message(
                 str(update.effective_chat.id), message.message_id, "general"

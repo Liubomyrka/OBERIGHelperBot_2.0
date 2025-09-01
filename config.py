@@ -53,10 +53,10 @@ OBERIG_PLAYLIST_ID = os.getenv("OBERIG_PLAYLIST_ID")
 if not OBERIG_PLAYLIST_ID:
     raise ValueError("OBERIG_PLAYLIST_ID не вказано у файлі .env")
 
-# Логування завантажених змінних (безпечно)
-print(f"TELEGRAM_TOKEN ✅ Конфігурація успішно завантажена.")
-print(f"GOOGLE_CREDENTIALS: ✅ Конфігурація успішно завантажена.")
-print(f"CALENDAR_ID: ✅ Конфігурація успішно завантажена.")
-print(f"TIMEZONE: {TIMEZONE}")
-print(f"YOUTUBE_API_KEY: ✅ Конфігурація успішно завантажена.")
-print("OBERIG_PLAYLIST_ID: ✅ Конфігурація успішно завантажена.")
+"""
+Configuration module.
+
+Notes:
+- Avoid printing on import to keep stdout clean for the bot runtime and tests.
+- Validation above raises ValueError for missing required variables which is sufficient.
+"""

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from database import get_value, set_value
 import json
 from utils.logger import logger
+from telegram.helpers import escape_markdown
 
 
 class Analytics:
@@ -180,7 +181,8 @@ class Analytics:
             for command, count in sorted(
                 commands_stats.items(), key=lambda x: x[1], reverse=True
             ):
-                report += f"/{command}: {count} разів\n"
+                safe_cmd = escape_markdown(command, version=1)
+                report += f"/{safe_cmd}: {count} разів\n"
 
             # Активні користувачі
             report += f"\n👥 *Активні користувачі:* {len(active_users)}\n"
@@ -189,7 +191,8 @@ class Analytics:
             if popular_queries:
                 report += "\n🔍 *Популярні запити:*\n"
                 for query, count in popular_queries:
-                    report += f"• {query}: {count} разів\n"
+                    safe_q = escape_markdown(str(query), version=1)
+                    report += f"• {safe_q}: {count} разів\n"
 
             return report
         except Exception as e:

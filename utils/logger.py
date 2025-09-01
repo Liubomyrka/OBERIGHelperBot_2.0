@@ -11,8 +11,11 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # Налаштування форматування
 formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 
-# Налаштування обробника файлу
-file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+"""
+Route logs to logs/<LOG_FILE> with rotation to prevent uncontrolled growth.
+"""
+file_path = os.path.join(LOG_DIR, LOG_FILE) if not os.path.isabs(LOG_FILE) else LOG_FILE
+file_handler = RotatingFileHandler(file_path, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
 file_handler.setFormatter(formatter)
 
 # Налаштування обробника консолі
@@ -33,4 +36,4 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 # Перевірка налаштувань логування
-logger.info("Логер успішно налаштовано. Логи записуються у консоль і файл.")
+logger.info("Логер налаштовано. Консоль + ротація файлу логів у 'logs'.")

@@ -16,11 +16,23 @@ import googleapiclient.discovery
 
 googleapiclient.discovery.CACHE = None
 
-# Перевірка наявності файлу облікових даних
-if not os.path.exists(GOOGLE_CREDENTIALS):
-    raise FileNotFoundError(
-        f"Файл облікових даних Google не знайдено за шляхом: {GOOGLE_CREDENTIALS}"
-    )
+# Не падаємо на імпорті, якщо облікові дані відсутні —
+# функції нижче оброблятимуть це та повертатимуть безпечні значення.
+def _get_calendar_service():
+    try:
+        if not GOOGLE_CREDENTIALS or not os.path.exists(GOOGLE_CREDENTIALS):
+            logger.error(
+                f"Файл облікових даних Google не знайдено або шлях порожній: {GOOGLE_CREDENTIALS}"
+            )
+            return None
+        credentials = service_account.Credentials.from_service_account_file(
+            GOOGLE_CREDENTIALS,
+            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+        )
+        return build("calendar", "v3", credentials=credentials)
+    except Exception as e:
+        logger.error(f"Помилка ініціалізації Google Calendar service: {e}")
+        return None
 
 BERLIN_TZ = pytz.timezone("Europe/Berlin")
 
@@ -31,11 +43,9 @@ def get_calendar_events(max_results=150):
     Отримує список майбутніх подій із Google Calendar.
     """
     try:
-        credentials = service_account.Credentials.from_service_account_file(
-            GOOGLE_CREDENTIALS,
-            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-        )
-        service = build("calendar", "v3", credentials=credentials)
+        service = _get_calendar_service()
+        if not service:
+            return []
 
         now = datetime.now(BERLIN_TZ).isoformat()
         events_result = (
@@ -88,11 +98,9 @@ def get_calendar_events_cached(max_results: int = 150, ttl: int = 300):
 def get_upcoming_birthdays(days: int = 30):
     """Return upcoming birthday events within ``days`` days."""
     try:
-        credentials = service_account.Credentials.from_service_account_file(
-            GOOGLE_CREDENTIALS,
-            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-        )
-        service = build("calendar", "v3", credentials=credentials)
+        service = _get_calendar_service()
+        if not service:
+            return []
 
         now = datetime.now(BERLIN_TZ)
         time_max = (now + timedelta(days=days)).isoformat()

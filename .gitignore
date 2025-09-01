@@ -17,3 +17,4 @@ script_backup.py.py
 
 # Ігноруємо специфічні артефакти
 desktop.ini
+bot_data.db

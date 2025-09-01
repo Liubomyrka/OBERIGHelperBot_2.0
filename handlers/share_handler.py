@@ -2,7 +2,18 @@
 
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 from utils.logger import logger
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 from utils.calendar_utils import (
     get_latest_youtube_video,
     get_most_popular_youtube_video,
@@ -18,11 +29,13 @@ async def share_latest_video(update: Update, context: ContextTypes.DEFAULT_TYPE)
         video_url = get_latest_youtube_video()
         if video_url:
             share_text = (
-                "🎵 *Нове відео від хору OBERIG!*\n\n"
+                "🎵 Нове відео від хору OBERIG!\n\n"
                 f"Переглянути: {video_url}\n\n"
                 "Підписуйтесь на наш канал, щоб не пропустити нові відео! 🎼"
             )
-            await update.message.reply_text(share_text, parse_mode="Markdown")
+            await safe_send_markdown(
+                context.bot, update.effective_chat.id, share_text
+            )
             logger.info("✅ Команда /share_latest виконана успішно")
         else:
             await update.message.reply_text(
@@ -45,11 +58,13 @@ async def share_popular_video(update: Update, context: ContextTypes.DEFAULT_TYPE
         video_url = get_most_popular_youtube_video()
         if video_url:
             share_text = (
-                "🔥 *Найпопулярніше відео хору OBERIG!*\n\n"
+                "🔥 Найпопулярніше відео хору OBERIG!\n\n"
                 f"Переглянути: {video_url}\n\n"
                 "Підписуйтесь на наш канал, щоб побачити більше! 🎼"
             )
-            await update.message.reply_text(share_text, parse_mode="Markdown")
+            await safe_send_markdown(
+                context.bot, update.effective_chat.id, share_text
+            )
             logger.info("✅ Команда /share_popular виконана успішно")
         else:
             await update.message.reply_text(

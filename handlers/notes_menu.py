@@ -1,5 +1,16 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+try:
+    from utils.message_utils import safe_send_markdown
+except Exception:  # pragma: no cover - fallback for tests
+    async def safe_send_markdown(bot, chat_id, text, **kwargs):
+        return await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            **kwargs,
+        )
 
 from utils.logger import logger
 from .drive_utils import list_sheets, send_sheet
@@ -20,8 +31,7 @@ async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     message = await update.message.reply_text(
-        "🎵 *Обери ноти внизу* ⬇️",
-        parse_mode="Markdown",
+        "🎵 Обери ноти внизу ⬇️",
         reply_markup=reply_markup,
     )
     save_bot_message(chat_id, message.message_id, "general")
@@ -53,8 +63,7 @@ async def show_all_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     message = await update.message.reply_text(
-        "🎵 *Вибери ноти внизу* ⬇️",
-        parse_mode="Markdown",
+        "🎵 Вибери ноти внизу ⬇️",
         reply_markup=reply_markup,
     )
     save_bot_message(chat_id, message.message_id, "general")
