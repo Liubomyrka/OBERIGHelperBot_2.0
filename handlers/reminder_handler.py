@@ -154,7 +154,19 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = 
             logger.info("⚠️ Подій на сьогодні немає, нагадування не відправлено.")
             return
         
-        active_chats = get_active_chats()
+        # Build recipients list: test chat only, or groups + private users
+        if TEST_CHAT_ID:
+            recipients = [TEST_CHAT_ID]
+        else:
+            try:
+                group_chats = get_active_chats()
+            except Exception:
+                group_chats = []
+            try:
+                private_chats = db.get_users_with_reminders()
+            except Exception:
+                private_chats = []
+            recipients = list(dict.fromkeys([*(group_chats or []), *(private_chats or [])]))
 
         def _pluralize_events(n: int) -> str:
             if n % 10 == 1 and n % 100 != 11:
@@ -169,7 +181,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = 
         )
 
         sent_any = False
-        for chat_id in active_chats:
+        for chat_id in recipients:
             message = await safe_send_markdown(
                 context.bot,
                 int(chat_id),
@@ -204,7 +216,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = 
                     buttons[0].append(InlineKeyboardButton("деталі в календарі", url=link))
                 markup = InlineKeyboardMarkup(buttons)
 
-                for chat_id in active_chats:
+                for chat_id in recipients:
                     message = await safe_send_markdown(
                         context.bot,
                         int(chat_id),
@@ -311,7 +323,18 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool =
                 continue  # Уже надсилали таке саме повідомлення
 
             # 🔁 Надсилання у тестовий чат або всім користувачам з reminders
-            target_chats = [TEST_CHAT_ID] if TEST_CHAT_ID else db.get_users_with_reminders()
+            if TEST_CHAT_ID:
+                target_chats = [TEST_CHAT_ID]
+            else:
+                try:
+                    group_chats = get_active_chats()
+                except Exception:
+                    group_chats = []
+                try:
+                    private_chats = db.get_users_with_reminders()
+                except Exception:
+                    private_chats = []
+                target_chats = list(dict.fromkeys([*(group_chats or []), *(private_chats or [])]))
 
             sent_success = False
             for chat_id in target_chats:
