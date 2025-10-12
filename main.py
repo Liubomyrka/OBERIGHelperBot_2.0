@@ -124,6 +124,35 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("Обробка невідомої команди завершена")
 
 
+def _summarize_update(update: object) -> str:
+    """Повертає стислий опис update без чутливих даних для логів."""
+    if not update:
+        return "None"
+    summary: dict[str, object] = {}
+    try:
+        chat = getattr(update, "effective_chat", None)
+        if chat:
+            summary["chat_id"] = getattr(chat, "id", None)
+            summary["chat_type"] = getattr(chat, "type", None)
+        user = getattr(update, "effective_user", None)
+        if user:
+            summary["user_id"] = getattr(user, "id", None)
+            summary["username"] = getattr(user, "username", None)
+        message = getattr(update, "effective_message", None)
+        if message:
+            summary["message_id"] = getattr(message, "message_id", None)
+            if getattr(message, "text", None):
+                summary["text_length"] = len(message.text)
+            if getattr(message, "caption", None):
+                summary["caption_length"] = len(message.caption)
+        callback_query = getattr(update, "callback_query", None)
+        if callback_query and getattr(callback_query, "data", None):
+            summary["callback_data_length"] = len(callback_query.data)
+        return json.dumps(summary, ensure_ascii=False)
+    except Exception:
+        return repr(update)
+
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     error = context.error
     logger.error(f"Виникла помилка: {error}")
@@ -134,7 +163,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         tb_string = "".join(tb_list)
         error_message = (
             f"Виникла помилка під час обробки оновлення:\n"
-            f"update = {update}\n\n"
+            f"update = {_summarize_update(update)}\n\n"
             f"error = {context.error}\n\n"
             f"traceback =\n{tb_string}"
         )
@@ -223,7 +252,12 @@ async def main():
     )
     job_queue = application.job_queue
     try:
-        logger.info(f"Using Telegram API URL: {application.bot.base_url}")
+        bot_url = application.bot.base_url  # e.g. https://api.telegram.org/bot<token>
+        if isinstance(bot_url, str) and "/bot" in bot_url:
+            host_part, _ = bot_url.split("/bot", 1)
+            logger.info("Using Telegram API host: %s", f"{host_part}/bot***")
+        else:
+            logger.info("Using Telegram API host: %s", bot_url or "unknown")
     except Exception:
         logger.debug("Unable to determine Telegram API URL")
 

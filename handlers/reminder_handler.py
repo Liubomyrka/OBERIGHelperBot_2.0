@@ -306,12 +306,19 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool =
             )
             if description:
                 reminder_text += f"📝 Опис: {description}\n"
+            reply_markup = None
+            buttons = []
+            event_id = event.get("id")
+            if event_id:
+                short_id = _generate_short_id(event_id)
+                _cache_event_id(short_id, event_id)
+                buttons.append(InlineKeyboardButton("Деталі", callback_data=f"event_{short_id}"))
             if link:
-                escaped_link = escape_markdown(link, version=2)
-                reminder_text += f"🔗 [Відкрити в календарі]({escaped_link})"
+                buttons.append(InlineKeyboardButton("Відкрити в календарі", url=link))
+            if buttons:
+                reply_markup = InlineKeyboardMarkup([buttons])
 
             # Хеш тексту
-            event_id = event.get("id")
             reminder_type = "hourly"  # 🔧 додаємо явно тип
             reminder_hash = generate_event_hash(event, reminder_type)
 
@@ -338,11 +345,14 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool =
 
             sent_success = False
             for chat_id in target_chats:
+                send_kwargs = {"disable_web_page_preview": True}
+                if reply_markup:
+                    send_kwargs["reply_markup"] = reply_markup
                 message = await safe_send_markdown(
                     context.bot,
                     int(chat_id),
                     reminder_text,
-                    disable_web_page_preview=True,
+                    **send_kwargs,
                 )
                 if message:
                     sent_success = True
