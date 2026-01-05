@@ -15,6 +15,7 @@ import re
 import googleapiclient.discovery
 
 googleapiclient.discovery.CACHE = None
+PERFORMANCE_KEYWORDS = ("виступ", "концерт")
 
 # Не падаємо на імпорті, якщо облікові дані відсутні —
 # функції нижче оброблятимуть це та повертатимуть безпечні значення.
@@ -661,6 +662,35 @@ def get_top_10_videos_cached(ttl: int = 300):
 
     return yt_top10_cached(ttl)
 
+
+def get_performance_events(max_results: int = 150, ttl: int = 300):
+    """
+    Повертає майбутні події, що містять ключові слова про виступи/концерти.
+    Використовує кеш get_calendar_events_cached для мінімізації запитів.
+    """
+    try:
+        events = get_calendar_events_cached(max_results=max_results, ttl=ttl)
+        filtered = []
+        for ev in events:
+            try:
+                text = " ".join(
+                    [
+                        ev.get("summary", ""),
+                        ev.get("description", ""),
+                        ev.get("location", ""),
+                    ]
+                ).lower()
+                if any(keyword in text for keyword in PERFORMANCE_KEYWORDS) and ev.get("start"):
+                    filtered.append(ev)
+            except Exception:
+                continue
+
+        logger.info(f"Відібрано {len(filtered)} подій для графіку виступів")
+        return filtered
+    except Exception as e:
+        logger.error(f"Помилка при фільтрації подій виступів: {e}")
+        return []
+
 # Перевірка нових відео в плейлісті YouTube
 async def check_new_videos():
     """
@@ -750,4 +780,5 @@ __all__ = [
     "get_most_popular_youtube_video_cached",
     "get_top_10_videos_cached",
     "check_new_videos",
+    "get_performance_events",
 ]

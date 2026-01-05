@@ -44,6 +44,7 @@ from handlers.schedule_handler import (
     schedule_command,
     upcoming_birthdays_command,
     event_details_callback,
+    performance_schedule_command,
 )
 from handlers.reminder_handler import (
     schedule_event_reminders,
@@ -266,6 +267,7 @@ async def main():
         BotCommand("start", "Запустити бота"),
         BotCommand("help", "Показати допомогу"),
         BotCommand("rozklad", "Переглянути розклад подій"),
+        BotCommand("performances", "Графік виступів"),
         BotCommand("upcoming_birthdays", "Найближчі дні народження"),
         BotCommand("reminder_on", "Увімкнути нагадування"),
         BotCommand("reminder_off", "Вимкнути нагадування"),
@@ -351,6 +353,11 @@ async def main():
         CommandHandler("start", start),
         CommandHandler("help", help_command, filters=filters.ChatType.PRIVATE),
         CommandHandler("rozklad", schedule_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler(
+            "performances",
+            performance_schedule_command,
+            filters=filters.ChatType.PRIVATE,
+        ),
         CommandHandler(
             "upcoming_birthdays",
             upcoming_birthdays_command,

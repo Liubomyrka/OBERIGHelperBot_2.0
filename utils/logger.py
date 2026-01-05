@@ -69,12 +69,36 @@ class _SensitiveDataFilter(logging.Filter):
                 record.args = _mask_sensitive(record.args)
         return True
 
+
+class _DowngradeNoisyFilter(logging.Filter):
+    """
+    Переводить багаточисельні службові повідомлення (натискання кнопок/меню)
+    у DEBUG, щоб не засмічувати основний лог.
+    """
+
+    _noise_markers = (
+        "Натиснуто кнопку",
+        "Обробка текстової кнопки",
+        "Спроба відобразити меню",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = str(record.msg)
+            if any(marker in msg for marker in self._noise_markers):
+                record.levelno = logging.DEBUG
+                record.levelname = "DEBUG"
+        except Exception:
+            pass
+        return True
+
 # Налаштування логера
 logger = logging.getLogger("OBERIGHelperBot")
 logger.setLevel(LOG_LEVEL)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 logger.addFilter(_SensitiveDataFilter())
+logger.addFilter(_DowngradeNoisyFilter())
 
 # Перевірка налаштувань логування
 logger.info("Логер налаштовано. Консоль + ротація файлу логів у 'logs'.")

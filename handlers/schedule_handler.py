@@ -8,6 +8,7 @@ from utils.calendar_utils import (
     get_today_events,
     get_event_details,
     get_upcoming_birthdays_cached,
+    get_performance_events,
 )
 from utils.logger import logger
 from database import (
@@ -155,6 +156,77 @@ async def schedule_command(
         logger.error(f"❌ Помилка при виконанні команди /rozklad: {e}")
         await update.message.reply_text(
             "❌ Виникла помилка при отриманні розкладу. Спробуйте пізніше.",
+            parse_mode=None,
+            disable_web_page_preview=True,
+        )
+
+
+async def performance_schedule_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """
+    Відображає майбутні виступи/концерти з календаря.
+    """
+    if not await ensure_private_chat(update, context, "performances"):
+        return
+
+    try:
+        events = get_performance_events(max_results=50)
+        if not events:
+            await update.message.reply_text(
+                "🎤 Найближчих виступів чи концертів немає.",
+                parse_mode=None,
+                disable_web_page_preview=True,
+            )
+            return
+
+        _event_id_cache.clear()
+
+        for event in events:
+            summary = event.get("summary", "Без назви")
+            location = event.get("location", "Місце не вказано")
+            start_raw = event["start"].get("dateTime", event["start"].get("date"))
+
+            if "T" in start_raw:
+                start_dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+                date_str = start_dt.strftime("%d-%m-%Y")
+                time_str = start_dt.strftime("%H:%M")
+            else:
+                start_dt = datetime.strptime(start_raw, "%Y-%m-%d")
+                date_str = start_dt.strftime("%d-%m-%Y")
+                time_str = "повний день"
+
+            event_line = (
+                f"📅 {date_str}\n"
+                f"🎯 {summary}\n"
+                f"📍 {location}\n"
+                f"⏰ {time_str}"
+            )
+
+            short_id = _generate_short_id(event["id"])
+            _cache_event_id(short_id, event["id"])
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Деталі",
+                        callback_data=f"event_{short_id}",
+                    )
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await update.message.reply_text(
+                event_line,
+                parse_mode=None,
+                disable_web_page_preview=True,
+                reply_markup=reply_markup,
+            )
+
+        logger.info("✅ Відображено графік виступів")
+    except Exception as e:
+        logger.error(f"❌ Помилка при показі графіку виступів: {e}")
+        await update.message.reply_text(
+            "❌ Виникла помилка при отриманні графіку виступів. Спробуйте пізніше.",
             parse_mode=None,
             disable_web_page_preview=True,
         )

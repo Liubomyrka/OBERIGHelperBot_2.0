@@ -185,36 +185,39 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             return [
                 event
                 for event in events_list
-                if keyword.lower() in event["summary"].lower()
-                or (
-                    event.get("description", "").lower()
-                    if event.get("description")
-                    else ""
-                )
+                if keyword.lower() in event.get("summary", "").lower()
+                or keyword.lower() in (event.get("description", "") or "").lower()
+                or keyword.lower() in (event.get("location", "") or "").lower()
             ][:limit]
 
         # Формуємо короткий контекст для ChatGPT з мінімальними даними
         calendar_context = "\n".join(
             [
-                f"📅 {event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
+                f"📅 {event.get('summary','Без назви')} - {event.get('start',{}).get('dateTime', event.get('start',{}).get('date'))} | "
+                f"📍 {event.get('location','(місце не вказано)')} | "
+                f"📝 {event.get('description','').strip()[:160]}"
                 for event in (events[:30] if events else [])
             ]
         )
         rehearsal_events = "\n".join(
             [
-                f"📅 {event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
+                f"📅 {event.get('summary','Без назви')} - {event.get('start',{}).get('dateTime', event.get('start',{}).get('date'))} | "
+                f"📍 {event.get('location','(місце не вказано)')} | "
+                f"📝 {event.get('description','').strip()[:120]}"
                 for event in search_events("репетиція", events)[:10]
             ]
         )
         performance_events = "\n".join(
             [
-                f"📅 {event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
-                for event in search_events("виступ", events)[:10]
+                f"📅 {event.get('summary','Без назви')} - {event.get('start',{}).get('dateTime', event.get('start',{}).get('date'))} | "
+                f"📍 {event.get('location','(місце не вказано)')} | "
+                f"📝 {event.get('description','').strip()[:120]}"
+                for event in (search_events("виступ", events) + search_events("концерт", events))[:10]
             ]
         )
         birthday_events = "\n".join(
             [
-                f"🎂 {event['summary']} - {event['start'].get('dateTime', event['start'].get('date'))}"
+                f"🎂 {event.get('summary','Без назви')} - {event.get('start',{}).get('dateTime', event.get('start',{}).get('date'))}"
                 for event in search_events("день народження", events)[:10]
             ]
         )

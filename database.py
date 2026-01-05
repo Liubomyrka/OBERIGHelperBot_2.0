@@ -236,7 +236,17 @@ def get_value(key: str) -> Optional[str]:
     try:
         with get_cursor() as cursor:
             table = "reminders"
-            if key.startswith(("bot_users", "video_notifications_disabled", "users_", "last_video_check")):
+            if key.startswith(
+                (
+                    "bot_users",
+                    "video_notifications_disabled",
+                    "users_",
+                    "last_video_check",
+                    "calendar_events_cache",
+                    "yt_",
+                    "last_known_video",
+                )
+            ):
                 table = "users"
             elif key.startswith(("group_chats", "group_notifications_disabled")):
                 table = "groups"

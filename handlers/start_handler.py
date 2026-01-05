@@ -30,7 +30,7 @@ from database import (
     update_user_list,
 )
 from handlers.help_handler import help_command
-from handlers.schedule_handler import schedule_command, upcoming_birthdays_command
+from handlers.schedule_handler import schedule_command, upcoming_birthdays_command, performance_schedule_command
 from handlers.reminder_handler import set_reminder, unset_reminder
 from handlers.notification_handler import toggle_video_notifications
 from handlers.admin_handler import (
@@ -73,6 +73,7 @@ SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
 
 Виберіть одну з опцій:
 📋 - Переглянути розклад подій
+🎤 - Графік виступів
 🕒 - Переглянути події на сьогодні
 🎂 - Переглянути найближчі дні народження
 
@@ -84,6 +85,7 @@ SCHEDULE_MENU_TEXT_GROUP = """📅 *Меню розкладу*
 
 Виберіть одну з опцій:
 📋 - Переглянути розклад подій
+🎤 - Графік виступів
 🕒 - Переглянути події на сьогодні
 🎂 - Переглянути найближчі дні народження
 
@@ -289,6 +291,7 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👥 Список користувачів",
         "👥 Список чатів",
         "📋 Розклад подій",
+        "🎤 Графік виступів",
         "🕒 Події на сьогодні",
         "🎂 Найближчі ДН",
         "🔕 Вимкнути нагадування",
@@ -382,6 +385,9 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "📋 Розклад подій":
                 await schedule_command(update, context)
                 logger.info("✅ Натиснуто кнопку '📋 Розклад подій'")
+            elif text == "🎤 Графік виступів":
+                await performance_schedule_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🎤 Графік виступів'")
             elif text == "🕒 Події на сьогодні":
                 await schedule_command(update, context, today_only=True)
                 logger.info("✅ Натиснуто кнопку '🕒 Події на сьогодні'")
@@ -589,7 +595,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 reminder_button = KeyboardButton("🔔 Увімкнути нагадування")
 
             keyboard = [
-                [KeyboardButton("📋 Розклад подій")],
+                [KeyboardButton("📋 Розклад подій"), KeyboardButton("🎤 Графік виступів")],
                 [KeyboardButton("🕒 Події на сьогодні"), KeyboardButton("🎂 Найближчі ДН")],
                 [reminder_button],
                 [KeyboardButton("🔙 Головне меню")],
@@ -597,7 +603,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
             menu_text = SCHEDULE_MENU_TEXT_PRIVATE
         else:
             keyboard = [
-                [KeyboardButton("📋 Розклад подій")],
+                [KeyboardButton("📋 Розклад подій"), KeyboardButton("🎤 Графік виступів")],
                 [KeyboardButton("🕒 Події на сьогодні"), KeyboardButton("🎂 Найближчі ДН")],
                 [KeyboardButton("🔙 Головне меню")],
             ]
