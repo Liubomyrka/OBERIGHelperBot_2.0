@@ -48,6 +48,7 @@ from handlers.admin_handler import (
     force_daily_reminder_command,
     force_hourly_reminder_command,
     force_birthday_command,
+    force_video_check_command,
 )
 from handlers.feedback_handler import start_feedback, show_my_feedback
 from handlers.oberig_assistant_handler import handle_oberig_assistant
@@ -505,6 +506,10 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if await is_admin(update.effective_user.id):
                     await force_birthday_command(update, context)
                     logger.info("✅ Натиснуто кнопку '🎂 ДН'")
+            elif text == "🎥 Відео":
+                if await is_admin(update.effective_user.id):
+                    await force_video_check_command(update, context)
+                    logger.info("✅ Натиснуто кнопку '🎥 Відео'")
             elif text == "📊 Аналітика за 7 днів":
                 if await is_admin(update.effective_user.id):
                     context.args = ["7"]

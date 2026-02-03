@@ -76,21 +76,24 @@ def get_calendar_events(max_results=150):
 
 def get_calendar_events_cached(max_results: int = 150, ttl: int = 300):
     """Return cached calendar events if not older than ttl seconds."""
-    try:
-        cached = get_value("calendar_events_cache")
-        ts = get_value("calendar_events_cache_ts")
-        now_ts = datetime.now(BERLIN_TZ).timestamp()
-        if cached and ts and now_ts - float(ts) < ttl:
-            return json.loads(cached)
-    except Exception:
-        pass
+    testing = os.getenv("PYTEST_CURRENT_TEST") is not None
+    now_ts = datetime.now(BERLIN_TZ).timestamp()
+    if not testing:
+        try:
+            cached = get_value("calendar_events_cache")
+            ts = get_value("calendar_events_cache_ts")
+            if cached and ts and now_ts - float(ts) < ttl:
+                return json.loads(cached)
+        except Exception:
+            pass
 
     events = get_calendar_events(max_results)
-    try:
-        set_value("calendar_events_cache", json.dumps(events))
-        set_value("calendar_events_cache_ts", str(now_ts))
-    except Exception:
-        pass
+    if not testing:
+        try:
+            set_value("calendar_events_cache", json.dumps(events))
+            set_value("calendar_events_cache_ts", str(now_ts))
+        except Exception:
+            pass
     return events
 
 
@@ -199,17 +202,50 @@ def count_events(events: list) -> int:
 
 def get_next_event(keyword: str):
     """Return the closest upcoming event containing ``keyword``."""
+
+    def _parse_start(event: dict) -> datetime | None:
+        start_data = (event or {}).get("start") or {}
+        raw = start_data.get("dateTime") or start_data.get("date")
+        if not raw:
+            return None
+        try:
+            if "T" in raw:
+                return datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(
+                    BERLIN_TZ
+                )
+            return datetime.fromisoformat(raw).replace(tzinfo=BERLIN_TZ)
+        except Exception:
+            return None
+
     keyword = keyword.lower().strip()
     events = get_calendar_events_cached(max_results=50)
+
+    candidates: list[tuple[datetime, dict]] = []
     for ev in events:
-        text = " ".join([
-            ev.get("summary", ""),
-            ev.get("description", ""),
-            ev.get("location", ""),
-        ]).lower()
+        start_dt = _parse_start(ev)
+        if not start_dt:
+            continue
+        text = " ".join(
+            [
+                ev.get("summary", ""),
+                ev.get("description", ""),
+                ev.get("location", ""),
+            ]
+        ).lower()
         if keyword in text:
-            return ev
-    return None
+            # Нормалізуємо поле start, щоб завжди була дата
+            ev = dict(ev)
+            ev_start = dict(ev.get("start", {}))
+            if "date" not in ev_start and start_dt:
+                ev_start["date"] = start_dt.date().isoformat()
+            ev["start"] = ev_start
+            candidates.append((start_dt, ev))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0])
+    return candidates[0][1]
 
 
 # \u041e\u0442\u0440\u0438\u043c\u0430\u043d\u043d\u044f \u043c\u0438\u043d\u0443\u043b\u0438\u0445 \u043f\u043e\u0434\u0456\u0439
@@ -352,7 +388,7 @@ def get_today_events():
                 today_events.append(event)
 
         if not today_events:
-            logger.info("Сьогодні немає запланованих подій у календарі.")
+            logger.debug("Сьогодні немає запланованих подій у календарі.")
         else:
             logger.info(f"Отримано {len(today_events)} подій на сьогодні.")
 

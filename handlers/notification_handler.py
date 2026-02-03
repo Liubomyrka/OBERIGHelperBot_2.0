@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from utils.logger import logger
+from config import DEFAULT_GROUP_CHAT_ID
 try:
     from utils.message_utils import safe_send_markdown
 except Exception:  # pragma: no cover - fallback for tests
@@ -16,6 +17,12 @@ except Exception:  # pragma: no cover - fallback for tests
 from utils.calendar_utils import check_new_videos
 from database import get_value, set_value, get_cursor
 import json
+
+
+def resolve_default_group_chat_id(group_chats: list) -> str | None:
+    if DEFAULT_GROUP_CHAT_ID:
+        return str(DEFAULT_GROUP_CHAT_ID)
+    return None
 
 
 async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
@@ -37,6 +44,7 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
         bot_users = json.loads(bot_users_str) if bot_users_str else []
         group_chats_str = get_value("group_chats")
         group_chats = json.loads(group_chats_str) if group_chats_str else []
+        default_group_chat_id = resolve_default_group_chat_id(group_chats)
 
         # Отримуємо статус сповіщень для користувачів і груп
         video_notifications_disabled_str = get_value("video_notifications_disabled")
@@ -47,14 +55,6 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
         else:
             video_notifications_disabled = {}
 
-        group_notifications_disabled_str = get_value("group_notifications_disabled")
-        if group_notifications_disabled_str:
-            group_notifications_disabled = json.loads(group_notifications_disabled_str)
-            if not isinstance(group_notifications_disabled, dict):
-                group_notifications_disabled = {}
-        else:
-            group_notifications_disabled = {}
-
         for video in new_videos:
             video_id = video["video_id"]
             title = video["title"]
@@ -63,6 +63,7 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
 
             # Список для зберігання ID повідомлень
             message_ids = []
+            notified_chats = set()
 
             # Надсилаємо сповіщення користувачам
             header = escape_markdown("🎥 Нове відео на каналі!", version=2)
@@ -82,23 +83,22 @@ async def check_and_notify_new_videos(context: ContextTypes.DEFAULT_TYPE):
                             f"✅ Надіслано сповіщення про нове відео користувачу {user_id}"
                         )
 
-            # Надсилаємо сповіщення групам
-            for group in group_chats:
-                chat_id = group["chat_id"]
-                if (
-                    str(chat_id) not in group_notifications_disabled
-                    or not group_notifications_disabled[str(chat_id)]
-                ):
-                    message = await safe_send_markdown(
-                        context.bot,
-                        chat_id,
-                        f"{header}\n\n*{escaped_title}*\n{url}",
+            # Надсилаємо сповіщення лише в один груповий чат за замовчуванням
+            if default_group_chat_id:
+                message = await safe_send_markdown(
+                    context.bot,
+                    default_group_chat_id,
+                    f"{header}\n\n*{escaped_title}*\n{url}",
+                )
+                if message:
+                    notified_chats.add(str(default_group_chat_id))
+                    message_ids.append(
+                        (str(default_group_chat_id), message.message_id)
                     )
-                    if message:
-                        message_ids.append((str(chat_id), message.message_id))
-                        logger.info(
-                            f"✅ Надіслано сповіщення про нове відео в груповий чат {chat_id}"
-                        )
+                    logger.info(
+                        "✅ Надіслано сповіщення про нове відео в групу за замовчуванням %s",
+                        default_group_chat_id,
+                    )
 
             # Зберігаємо, що відео надіслано разом із ID повідомлень
             await save_video_sent(video_id, message_ids)

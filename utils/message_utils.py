@@ -16,9 +16,15 @@ async def safe_send_markdown(bot, chat_id: int, text: str, retries: int = 3, **k
                 **kwargs,
             )
         except NetworkError as e:
+            if "chat not found" in str(e).lower():
+                logger.warning(f"Chat not found, припиняю відправку в chat_id={chat_id}")
+                break
             logger.warning(f"Network error on attempt {attempt}/{retries}: {e}")
             await asyncio.sleep(attempt)
         except BadRequest as e:
+            if "chat not found" in str(e).lower():
+                logger.warning(f"Chat not found (BadRequest), припиняю відправку в chat_id={chat_id}")
+                break
             logger.error(f"BadRequest while sending message: {e}")
             escaped = escape_markdown(text, version=2)
         except Exception as e:

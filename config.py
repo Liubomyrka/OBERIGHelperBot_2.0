@@ -53,6 +53,9 @@ OBERIG_PLAYLIST_ID = os.getenv("OBERIG_PLAYLIST_ID")
 if not OBERIG_PLAYLIST_ID:
     raise ValueError("OBERIG_PLAYLIST_ID не вказано у файлі .env")
 
+# ID групового чату за замовчуванням для сповіщень про нові відео
+DEFAULT_GROUP_CHAT_ID = os.getenv("DEFAULT_GROUP_CHAT_ID")
+
 """
 Configuration module.
 

@@ -80,6 +80,7 @@ from handlers.admin_handler import (
     force_daily_reminder_command,
     force_hourly_reminder_command,
     force_birthday_command,
+    force_video_check_command,
 )
 from utils.analytics import Analytics
 from handlers.feedback_handler import get_feedback_handlers
@@ -94,7 +95,7 @@ from utils.calendar_utils import (
 )
 import json
 import time
-from telegram.error import Conflict
+from telegram.error import Conflict, NetworkError
 from config import TELEGRAM_TOKEN
 
 
@@ -112,6 +113,9 @@ ERROR_PRIVATE_CHAT_ONLY = "Ця команда доступна лише в ос
 ERROR_GENERAL = "Виникла помилка. Спробуйте пізніше або зверніться до адміністратора."
 ERROR_INTERNAL = "Виникла внутрішня помилка. Адміністратор уже сповіщений."
 
+_last_error_sig: str | None = None
+_last_error_ts: float = 0.0
+_last_error_count: int = 0
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.warning("Отримана невідома команда")
@@ -155,7 +159,27 @@ def _summarize_update(update: object) -> str:
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    global _last_error_sig, _last_error_ts, _last_error_count
     error = context.error
+
+    is_network = isinstance(error, (httpx.ConnectError, NetworkError))
+    if is_network:
+        sig = f"{type(error).__name__}:{getattr(error, 'args', None)}"
+        now_ts = time.time()
+        if _last_error_sig == sig and now_ts - _last_error_ts < 60:
+            _last_error_count += 1
+            logger.warning(
+                "Повторна мережева помилка (%s), кількість за хвилину: %d",
+                sig,
+                _last_error_count,
+            )
+            return
+        _last_error_sig = sig
+        _last_error_ts = now_ts
+        _last_error_count = 1
+        logger.warning("Мережева помилка: %s", sig)
+        return
+
     logger.error(f"Виникла помилка: {error}")
     try:
         import traceback
@@ -235,12 +259,14 @@ async def main():
     else:
         users = json.loads(bot_users)
         users_with_reminders = json.loads(get_value("users_with_reminders") or "[]")
+        auto_added = []
         for user_id in users:
             if user_id not in users_with_reminders:
                 update_user_list("users_with_reminders", user_id, add=True)
-                logger.info(
-                    f"✅ Автоматично додано користувача {user_id} до нагадувань за замовчуванням"
-                )
+                auto_added.append(str(user_id))
+        if auto_added:
+            logger.info("✅ Автоматично додано %d користувачів до нагадувань за замовчуванням", len(auto_added))
+            logger.debug("Додані користувачі до нагадувань: %s", ", ".join(auto_added))
 
     video_notifications = get_value("video_notifications_disabled")
     if video_notifications is None:
@@ -289,6 +315,7 @@ async def main():
         BotCommand("force_daily_reminder", "Примусово надіслати розклад"),
         BotCommand("force_hourly_reminder", "Примусово нагадати про події"),
         BotCommand("force_birthday", "Примусово вітати з ДН"),
+        BotCommand("force_video_check", "Примусово перевірити нові відео"),
     ]
 
     group_commands = [BotCommand("start", "Запустити бота")]
@@ -304,6 +331,7 @@ async def main():
         BotCommand("force_daily_reminder", "Примусово розклад"),
         BotCommand("force_hourly_reminder", "Примусово нагадування"),
         BotCommand("force_birthday", "Примусово ДН"),
+        BotCommand("force_video_check", "Примусово відео"),
     ]
 
     try:
@@ -435,6 +463,11 @@ async def main():
             force_birthday_command,
             filters=filters.ChatType.PRIVATE,
         ),
+        CommandHandler(
+            "force_video_check",
+            force_video_check_command,
+            filters=filters.ChatType.PRIVATE,
+        ),
         MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, text_menu_handler),
     ]
 
@@ -449,13 +482,14 @@ async def main():
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    schedule_event_reminders(job_queue)
+    schedule_event_reminders(job_queue, initial_delay=15, daily_delay=3600)
     job_queue.run_once(
         startup_daily_reminder,
-        when=10,
+        when=30,
         job_kwargs={"misfire_grace_time": 60},
     )
-    job_queue.run_repeating(check_and_notify_new_videos, interval=1800, first=10)
+    job_queue.run_once(check_and_notify_new_videos, when=45)
+    job_queue.run_repeating(check_and_notify_new_videos, interval=1800, first=1800)
 
     create_birthday_greetings_table()
     schedule_birthday_greetings(job_queue)

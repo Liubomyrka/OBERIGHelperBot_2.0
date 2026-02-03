@@ -16,6 +16,7 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
+from utils.birthday_image import create_birthday_image_bytes
 try:
     from utils.message_utils import safe_send_markdown
 except Exception:  # pragma: no cover - fallback for tests
@@ -38,6 +39,7 @@ from utils import (
 ASSISTANT_ID = init_openai_api()
 TEST_CHAT_ID = os.getenv("REMINDER_TEST_CHAT_ID")
 berlin_tz = pytz.timezone(TIMEZONE)
+BIRTHDAY_IMAGE_ENABLED = os.getenv("BIRTHDAY_IMAGE_ENABLED", "1").strip().lower() not in {"0", "false", "no"}
 
 def get_event_signature(event: dict) -> str:
     summary = event.get('summary', '')
@@ -151,7 +153,7 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE, force: bool = 
 
         logger.info("🔔 Початок надсилання щоденних нагадувань...")
         if not events:
-            logger.info("⚠️ Подій на сьогодні немає, нагадування не відправлено.")
+            logger.debug("⚠️ Подій на сьогодні немає, нагадування не відправлено.")
             return
         
         # Build recipients list: test chat only, or groups + private users
@@ -261,11 +263,11 @@ async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
 async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool = False):
     now = datetime.now(pytz.timezone(TIMEZONE))
     one_hour_later = now + timedelta(hours=1)
-    logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
-    logger.info("🔔 Початок перевірки нагадувань...")
+    logger.debug(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
+    logger.debug("🔔 Початок перевірки нагадувань...")
     try:
         events = get_today_events()
-        logger.info(f"📅 Отримано {len(events)} подій із календаря.")
+        logger.debug(f"📅 Отримано {len(events)} подій із календаря.")
     except Exception as e:
         logger.error(f"❌ Помилка при отриманні подій: {e}")
         return
@@ -369,7 +371,7 @@ async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE, force: bool =
             logger.error(f"🔍 Подія-сирець: {event}")
 
     if notified_count == 0:
-        logger.info("⚠️ Немає подій, які потребують нагадувань за годину або всі вже надіслані без змін.")
+        logger.debug("⚠️ Немає подій, які потребують нагадувань за годину або всі вже надіслані без змін.")
     else:
         logger.info(f"✅ Надіслано {notified_count} нових нагадувань.")
 
@@ -543,7 +545,7 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE, force: bo
             and dative_name.lower() not in greeting.lower()
         ):
             logger.warning(
-                "⚠️ Згенероване привітання не містить імені, повторюю запит"
+                f"⚠️ Згенероване привітання не містить імені для події '{raw_summary}' (id={event.get('id')}); повторюю запит"
             )
             fix_prompt = (
                 "Попередній текст привітання не містив імені іменинника. "
@@ -556,16 +558,48 @@ async def check_birthday_greetings(context: ContextTypes.DEFAULT_TYPE, force: bo
 
         logger.info(f"Згенеровано вітання для {name}: {greeting}")
 
+        image_bytes = None
+        if BIRTHDAY_IMAGE_ENABLED:
+            seed = f"{event.get('id', '')}_{today.isoformat()}_{greeting_type}"
+            image_bytes = create_birthday_image_bytes(name=name, seed=seed, greeting_type=greeting_type)
+
         # Надсилаємо привітання в усі активні чати
         for group_chat_id in active_group_chats:
-            message = await safe_send_markdown(
-                context.bot,
-                int(group_chat_id),
-                greeting,
-            )
-            if message:
-                logger.info(
-                    f"Надіслано {greeting_type} привітання для {name} у чат {group_chat_id}"
+            try:
+                message = None
+                if image_bytes:
+                    caption = greeting if len(greeting) <= 1000 else None
+                    send_kwargs = {}
+                    if caption:
+                        send_kwargs["caption"] = caption
+                        send_kwargs["parse_mode"] = ParseMode.MARKDOWN_V2
+                    message = await context.bot.send_photo(
+                        chat_id=int(group_chat_id),
+                        photo=image_bytes,
+                        **send_kwargs,
+                    )
+                    if message and not caption:
+                        await safe_send_markdown(
+                            context.bot,
+                            int(group_chat_id),
+                            greeting,
+                        )
+                else:
+                    message = await safe_send_markdown(
+                        context.bot,
+                        int(group_chat_id),
+                        greeting,
+                    )
+                if message:
+                    logger.info(
+                        f"Надіслано {greeting_type} привітання для {name} у чат {group_chat_id}"
+                    )
+            except Exception as e:
+                logger.error(f"❌ Помилка надсилання привітання з зображенням у чат {group_chat_id}: {e}")
+                await safe_send_markdown(
+                    context.bot,
+                    int(group_chat_id),
+                    greeting,
                 )
 
         # Зберігаємо привітання для запису в базу
@@ -660,19 +694,21 @@ def create_birthday_greetings_table():
         )
     logger.info("✅ Таблиця birthday_greetings створена або вже існує.")
 
-def schedule_event_reminders(job_queue: JobQueue):
+def schedule_event_reminders(
+    job_queue: JobQueue, initial_delay: int = 10, daily_delay: int = 3600
+):
     """
     Планує завдання для перевірки годинних нагадувань.
     """
     job_queue.run_repeating(
         send_event_reminders,
         interval=600,  # 600 секунд = 10 хвилин
-        first=10,
+        first=initial_delay,
     )
     job_queue.run_repeating(
         send_daily_reminder,
         interval=3600,  # раз на годину
-        first=3600,
+        first=daily_delay,
     )
     logger.info("✅ Планування завдань для нагадувань успішно налаштовано.")
 

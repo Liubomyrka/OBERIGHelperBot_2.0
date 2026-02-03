@@ -21,6 +21,7 @@ from handlers.reminder_handler import (
     send_event_reminders,
     check_birthday_greetings,
 )
+from handlers.notification_handler import check_and_notify_new_videos
 
 
 async def is_admin(user_id: int) -> bool:
@@ -101,7 +102,7 @@ async def show_admin_force_menu(update: Update, context: ContextTypes.DEFAULT_TY
         return
     keyboard = [
         [KeyboardButton("📅 Розклад"), KeyboardButton("⏰ Нагадування")],
-        [KeyboardButton("🎂 ДН")],
+        [KeyboardButton("🎂 ДН"), KeyboardButton("🎥 Відео")],
         [KeyboardButton("🔙 Адмін меню")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -197,6 +198,16 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    def _cleanup_chat(chat_id: str):
+        try:
+            group_chats = json.loads(get_value("group_chats") or "[]")
+            filtered = [c for c in group_chats if str(c.get("chat_id")) != str(chat_id)]
+            if len(filtered) != len(group_chats):
+                set_value("group_chats", json.dumps(filtered))
+                logger.info(f"🧹 Видалено невалідний чат {chat_id} зі списку group_chats")
+        except Exception as cleanup_err:
+            logger.debug(f"Не вдалося очистити чат {chat_id}: {cleanup_err}")
+
     try:
         with get_cursor() as cursor:
             # Отримуємо повідомлення за останній день
@@ -220,9 +231,15 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     deleted_count += 1
                 except Exception as e:
-                    logger.error(
-                        f"❌ Помилка при видаленні повідомлення {message_id} із чату {chat_id}: {e}"
-                    )
+                    if "chat not found" in str(e).lower():
+                        logger.warning(
+                            f"⚠️ Чат {chat_id} недоступний (Chat not found) при видаленні повідомлення {message_id}, очищаю запис."
+                        )
+                        _cleanup_chat(chat_id)
+                    else:
+                        logger.error(
+                            f"❌ Помилка при видаленні повідомлення {message_id} із чату {chat_id}: {e}"
+                        )
                     failed_count += 1
                 finally:
                     # Видаляємо запис із бази, незалежно від результату
@@ -429,6 +446,22 @@ async def force_birthday_command(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text("✅ Вітання з днем народження надіслано примусово.")
     logger.info(f"✅ Адміністратор {user_id} примусово відправив вітання з днем народження")
 
+
+async def force_video_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await is_admin(user_id):
+        await update.message.reply_text(
+            "❌ *Ця команда доступна тільки адміністратору.*",
+            parse_mode="Markdown",
+        )
+        logger.warning(
+            f"⚠️ Спроба несанкціонованого доступу до force_video_check від користувача {user_id}"
+        )
+        return
+    await check_and_notify_new_videos(context)
+    await update.message.reply_text("✅ Перевірку нових відео виконано.")
+    logger.info(f"✅ Адміністратор {user_id} примусово перевірив нові відео")
+
 __all__ = [
     "is_admin",
     "admin_menu_command",
@@ -444,4 +477,5 @@ __all__ = [
     "force_daily_reminder_command",
     "force_hourly_reminder_command",
     "force_birthday_command",
+    "force_video_check_command",
 ]
