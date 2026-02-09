@@ -1,14 +1,35 @@
 # reminder_handler.py - модуль, який містить функції для нагадувань про події у календарі
-from telegram.ext import JobQueue, ContextTypes
-from utils.calendar_utils import get_calendar_events
-from utils.logger import logger
-from config import TIMEZONE
 from datetime import datetime, timedelta, time
-from database import set_value, get_value, delete_value
+
 import pytz
+from telegram.ext import ContextTypes, JobQueue
+
+from config import TIMEZONE
+from database import get_value, set_value
+from utils.calendar_utils import (
+    get_today_events,
+    get_calendar_events,
+    get_upcoming_event_reminders,
+)
+from utils.logger import logger
 
 # 🛡️ Ініціалізація глобальних змінних
 berlin_tz = pytz.timezone(TIMEZONE)
+
+
+def _format_event_line(event: dict) -> str:
+    """Форматує подію у короткий рядок для повідомлень."""
+    summary = event.get("summary", "Без назви")
+    start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
+
+    if not start:
+        return f"• {summary}"
+
+    if "T" in start:
+        start_dt = datetime.fromisoformat(start.replace("Z", "+00:00")).astimezone(berlin_tz)
+        return f"• {summary} — {start_dt.strftime('%d-%m-%Y %H:%M')}"
+
+    return f"• {summary} — {datetime.strptime(start, '%Y-%m-%d').strftime('%d-%m-%Y')}"
 
 
 # 🛡️ Функція для отримання актуального часу
@@ -21,16 +42,6 @@ def get_current_time():
     return now, one_hour_later
 
 
-# 🛡️ Ініціалізація глобальних змінних зі збереженими значеннями
-try:
-    daily_reminder_sent = get_value('daily_reminder_sent') == str(datetime.now(berlin_tz).date())
-    hourly_reminder_sent = set((get_value('hourly_reminder_sent') or '').split(',')) if get_value('hourly_reminder_sent') else set()
-except Exception as e:
-    logger.error(f"❌ Помилка під час ініціалізації змінних нагадувань: {e}")
-    daily_reminder_sent = False
-    hourly_reminder_sent = set()
-
-
 # 🛡️ Функція для отримання списку активних чатів
 def get_active_chats():
     """
@@ -39,7 +50,7 @@ def get_active_chats():
     try:
         chat_list = get_value('group_chat_list') or ''
         if chat_list:
-            return chat_list.split(',')
+            return list(filter(None, chat_list.split(',')))
         logger.warning("⚠️ Список групових чатів для нагадувань порожній. Нагадування не буде надіслано.")
         return []
     except Exception as e:
@@ -47,39 +58,28 @@ def get_active_chats():
         return []
 
 
+# 🛡️ Функція для отримання користувачів з увімкненими нагадуваннями
+def get_users_with_enabled_reminders():
+    user_list = (get_value('user_reminder_list') or '').split(',') if get_value('user_reminder_list') else []
+    return [user_id for user_id in user_list if user_id and get_value(f'reminder_{user_id}') == 'on']
+
+
 # 🔔 Увімкнення нагадувань
 async def set_reminder(update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     try:
         logger.info(f"🔄 Спроба увімкнення нагадувань для користувача {user_id}")
-        
-        # Встановлюємо нагадування для користувача
+
         set_value(f'reminder_{user_id}', 'on')
-        logger.info(f"✅ Ключ reminder_{user_id} встановлено на 'on'")
-        
-        # Отримуємо та оновлюємо список користувачів
-        current_list = get_value('user_reminder_list')
-        if current_list:
-            current_list = set(filter(None, current_list.split(',')))
-        else:
-            current_list = set()
-        
-        logger.info(f"🔄 Поточний список користувачів перед оновленням: {current_list}")
-        
-        # Додаємо користувача
+
+        current_list = set(filter(None, (get_value('user_reminder_list') or '').split(',')))
         current_list.add(user_id)
-        updated_list = ','.join(current_list)
-        set_value('user_reminder_list', updated_list)
-        logger.info(f"✅ Оновлений список користувачів: {updated_list}")
-        
-        # Перевірка збереження
-        saved_list = get_value('user_reminder_list')
-        logger.info(f"🔍 Перевірка збереження списку у базі: {saved_list}")
-        
-        await update.message.reply_text("🔔 Нагадування увімкнено.")
+        set_value('user_reminder_list', ','.join(current_list))
+
+        await update.effective_message.reply_text("🔔 Нагадування увімкнено.")
     except Exception as e:
         logger.error(f"❌ Помилка при увімкненні нагадувань для користувача {user_id}: {e}")
-        await update.message.reply_text("❌ Виникла помилка при увімкненні нагадувань.")
+        await update.effective_message.reply_text("❌ Виникла помилка при увімкненні нагадувань.")
 
 
 # 🔕 Вимкнення нагадувань
@@ -87,79 +87,46 @@ async def unset_reminder(update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     try:
         logger.info(f"🔄 Спроба вимкнення нагадувань для користувача {user_id}")
-        
-        # Вимикаємо нагадування для користувача
+
         set_value(f'reminder_{user_id}', 'off')
-        logger.info(f"✅ Ключ reminder_{user_id} встановлено на 'off'")
-        
-        # Отримуємо та оновлюємо список користувачів
-        current_list = get_value('user_reminder_list')
-        if current_list:
-            current_list = set(filter(None, current_list.split(',')))
-        else:
-            current_list = set()
-        
-        logger.info(f"🔄 Поточний список користувачів перед оновленням: {current_list}")
-        
-        # Видаляємо користувача зі списку
+
+        current_list = set(filter(None, (get_value('user_reminder_list') or '').split(',')))
         current_list.discard(user_id)
-        updated_list = ','.join(current_list)
-        set_value('user_reminder_list', updated_list)
-        logger.info(f"✅ Оновлений список користувачів: {updated_list}")
-        
-        # Перевірка збереження
-        saved_list = get_value('user_reminder_list')
-        logger.info(f"🔍 Перевірка збереження списку у базі: {saved_list}")
-        
-        await update.message.reply_text("🔕 Нагадування вимкнено.")
+        set_value('user_reminder_list', ','.join(current_list))
+
+        await update.effective_message.reply_text("🔕 Нагадування вимкнено.")
     except Exception as e:
         logger.error(f"❌ Помилка при вимкненні нагадувань для користувача {user_id}: {e}")
-        await update.message.reply_text("❌ Виникла помилка при вимкненні нагадувань.")
+        await update.effective_message.reply_text("❌ Виникла помилка при вимкненні нагадувань.")
 
 
 # 🕒 Функція для щоденних нагадувань
 async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
     """
-    Надсилає щоденні нагадування один раз на день в інтервалі 9:00–21:00.
+    Надсилає щоденні нагадування один раз на день.
     """
     now = datetime.now(berlin_tz)
     current_date = now.date().isoformat()
 
-    # Перевірка діапазону часу
-    if not (9 <= now.hour < 21):
-        logger.info("⏰ Зараз не вказаний інтервал для щоденних нагадувань (9:00–21:00).")
-        return
-
-    # Перевірка дублювання
     already_sent = get_value('daily_reminder_sent')
     if already_sent == current_date:
         logger.info("🔄 Щоденне нагадування вже було відправлено сьогодні.")
         return
 
     try:
-        logger.info("🔔 Початок надсилання щоденних нагадувань...")
-
-        # Видалення старих записів
-        logger.info("🧹 Видалення старих записів щоденних нагадувань...")
-        delete_value('daily_reminder_sent')
-        delete_value('daily_reminder_%')
-
-        # Отримання подій на сьогодні
-        events = get_calendar_events()
+        events = get_today_events()
         if not events:
             logger.info("⚠️ Подій на сьогодні немає.")
+            set_value('daily_reminder_sent', current_date)
             return
 
-        # Надсилання нагадувань у активні чати
+        event_lines = "\n".join(_format_event_line(event) for event in events)
+        text = f"🔔 Сьогоднішні події:\n{event_lines}"
+
         active_chats = get_active_chats()
         for chat_id in active_chats:
-            await context.bot.send_message(
-                chat_id=int(chat_id),
-                text="🔔 Сьогоднішні події:\n" + "\n".join(events),
-                parse_mode="Markdown"
-            )
+            await context.bot.send_message(chat_id=int(chat_id), text=text)
 
-        # Встановлення ключа для запобігання дублювання
         set_value('daily_reminder_sent', current_date)
         logger.info(f"✅ Щоденні нагадування на {current_date} відправлено успішно.")
 
@@ -167,60 +134,37 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"❌ Помилка у функції send_daily_reminder: {e}")
 
 
-# 🛡️ Функція для перевірки щоденних нагадувань при запуску
-async def startup_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
-    """
-    Виконує перевірку щоденних нагадувань одразу після запуску бота.
-    """
-    now = datetime.now(berlin_tz)
-    if 9 <= now.hour < 21:
-        already_sent = get_value('daily_reminder_sent')
-        today = now.date().isoformat()
-        if already_sent != today:
-            logger.info("🔄 Запуск щоденних нагадувань при старті бота.")
-            await send_daily_reminder(context)
-    else:
-        logger.info("⏳ Зараз не час для щоденних нагадувань (9:00–21:00).")
+# ⏰ Функція для нагадувань за годину до події
+async def send_event_reminders(context: ContextTypes.DEFAULT_TYPE):
+    now, _ = get_current_time()
+    logger.info(f"⏰ Перевірка нагадувань за годину: {now}")
 
-
-# 🛡️ Планування завдань
-def schedule_event_reminders(job_queue: JobQueue):
-    """
-    Планування щоденних та годинних нагадувань.
-    """
-    # Щоденні нагадування
-    job_queue.run_daily(
-        send_daily_reminder, 
-        time=time(hour=9, minute=0, tzinfo=berlin_tz)
-    )
-
-    # Щогодинна перевірка
-    job_queue.run_repeating(
-        send_daily_reminder,
-        interval=3600,  # Кожну годину
-        first=10  # Затримка 10 секунд після запуску
-    )
-
-    logger.info("✅ Планування щоденних і годинних нагадувань налаштовано успішно.")
-
-
-# ⏰ Функція для годинних нагадувань
-async def send_event_reminders(context):
-    now, one_hour_later = get_current_time()
-    logger.info(f"⏰ Перевірка годинних нагадувань: Зараз {now}, Через годину {one_hour_later}")
     try:
-        user_reminders = []
-        user_list = (get_value('user_reminder_list') or '').split(',') if get_value('user_reminder_list') else []
-        logger.info(f"📊 Список користувачів із бази: {user_list}")
+        events = get_calendar_events(max_results=20)
+        upcoming = get_upcoming_event_reminders(events, reminder_minutes=60)
+        if not upcoming:
+            return
 
-        for user_id in user_list:
-            if get_value(f'reminder_{user_id}') == 'on':
-                user_reminders.append(user_id)
+        sent_keys = set(filter(None, (get_value('hourly_reminder_sent') or '').split(',')))
+        users = get_users_with_enabled_reminders()
 
-        logger.info(f"🔄 Користувачі з увімкненими нагадуваннями: {user_reminders}")
+        for event in upcoming:
+            event_id = event.get('id', '')
+            start = event.get('start', {}).get('dateTime', event.get('start', {}).get('date', ''))
+            dedupe_key = f"{event_id}:{start}"
+            if dedupe_key in sent_keys:
+                continue
+
+            message = f"⏰ Нагадування за 1 годину:\n{_format_event_line(event)}"
+            for user_id in users:
+                await context.bot.send_message(chat_id=int(user_id), text=message)
+
+            sent_keys.add(dedupe_key)
+
+        set_value('hourly_reminder_sent', ','.join(sent_keys))
+
     except Exception as e:
         logger.error(f"❌ Помилка у функції годинних нагадувань: {e}")
-
 
 
 # 🛡️ Планування завдань

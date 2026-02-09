@@ -20,12 +20,13 @@ async def ensure_private_chat(update: Update, context: ContextTypes.DEFAULT_TYPE
     if update.effective_chat.type != "private":
         try:
             logger.warning(f"⚠️ Команда /{command} виконується не в приватному чаті.")
-            await update.message.reply_text(
+            if update.effective_message:
+                await update.effective_message.reply_text(
                 f"❗ *Команда /{command} доступна лише в особистих повідомленнях.*\n"
                 f"👉 [Перейдіть до приватного чату](https://t.me/OBERIGHelperBot).",
                 parse_mode="Markdown",
                 disable_web_page_preview=True
-            )
+                )
         except Exception as e:
             logger.error(f"❌ Помилка у ensure_private_chat: {e}")
         return False
@@ -44,7 +45,7 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         events = get_calendar_events()
         if not events:
-            await update.message.reply_text("📅 Немає запланованих подій.")
+            await update.effective_message.reply_text("📅 Немає запланованих подій.")
             logger.info("⚠️ Події в Google Calendar відсутні.")
         else:
             response = "📅 **Розклад подій:**\n──────────────\n"
@@ -87,7 +88,7 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except Exception as e:
                     logger.error(f"❌ Помилка при обробці події: {e}")
 
-            await update.message.reply_text(
+            await update.effective_message.reply_text(
                 text=response,
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(buttons)
@@ -95,7 +96,8 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.info("✅ Команда /rozklad виконана успішно")
     except Exception as e:
         logger.error(f"❌ Помилка у команді /rozklad: {e}")
-        await update.message.reply_text("❌ Виникла помилка при отриманні подій.")
+        if update.effective_message:
+            await update.effective_message.reply_text("❌ Виникла помилка при отриманні подій.")
 
 
 # 🛡️ Функція event_details_callback
@@ -152,7 +154,7 @@ async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await ensure_private_chat(update, context, "reminder_on"):
         return
     user_reminders[update.effective_chat.id] = True
-    await update.message.reply_text("🔔 Нагадування увімкнено.")
+    await update.effective_message.reply_text("🔔 Нагадування увімкнено.")
 
 
 # 🔕 Вимкнення нагадувань
@@ -160,4 +162,4 @@ async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await ensure_private_chat(update, context, "reminder_off"):
         return
     user_reminders.pop(update.effective_chat.id, None)
-    await update.message.reply_text("🔕 Нагадування вимкнено.")
+    await update.effective_message.reply_text("🔕 Нагадування вимкнено.")
