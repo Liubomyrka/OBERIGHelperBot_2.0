@@ -122,6 +122,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await unset_reminder(update, context)
         elif data == 'help':
             await help_command(update, context)
+        elif data == 'start':
+            await start(update, context)
         elif data.startswith("event_details_"):
             await event_details_callback(update, context)
         else:
@@ -176,6 +178,7 @@ async def main():
     application.add_handler(CommandHandler("latest_video", latest_video_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(CommandHandler("clear", clear_bot_messages))
+    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
     application.add_error_handler(error_handler)
 
     schedule_event_reminders(application.job_queue)
