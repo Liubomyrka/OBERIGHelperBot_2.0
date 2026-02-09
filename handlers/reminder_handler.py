@@ -16,7 +16,11 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from utils.birthday_image import create_birthday_image_bytes
+try:
+    from utils.birthday_image import create_birthday_image_bytes
+except Exception:  # pragma: no cover - fallback for tests/minimal environments
+    def create_birthday_image_bytes(*args, **kwargs):
+        return None
 try:
     from utils.message_utils import safe_send_markdown
 except Exception:  # pragma: no cover - fallback for tests
