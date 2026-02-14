@@ -15,7 +15,54 @@ import re
 import googleapiclient.discovery
 
 googleapiclient.discovery.CACHE = None
-PERFORMANCE_KEYWORDS = ("виступ", "концерт")
+PERFORMANCE_KEYWORDS = (
+    "виступ",
+    "концерт",
+    "фестиваль",
+    "імпреза",
+    "performance",
+    "concert",
+    "auftritt",
+    "konzert",
+    "chor",
+    "choir",
+    "подія",
+)
+PERFORMANCE_KEYWORD_PATTERNS = (
+    re.compile(r"\bвиступ\w*\b", re.IGNORECASE),
+    re.compile(r"\bконцерт\w*\b", re.IGNORECASE),
+    re.compile(r"\bфестивал\w*\b", re.IGNORECASE),
+    re.compile(r"\bperformance\w*\b", re.IGNORECASE),
+    re.compile(r"\bconcert\w*\b", re.IGNORECASE),
+    re.compile(r"\bauftritt\w*\b", re.IGNORECASE),
+    re.compile(r"\bkonzert\w*\b", re.IGNORECASE),
+    re.compile(r"\bchor\w*\b", re.IGNORECASE),
+    re.compile(r"\bchoir\w*\b", re.IGNORECASE),
+)
+PERFORMANCE_NEGATIVE_KEYWORDS = (
+    "репетиція",
+    "репетиции",
+    "probe",
+    "chorprobe",
+    "rehearsal",
+    "meeting",
+    "збори",
+)
+PERFORMANCE_LOCATION_KEYWORDS = (
+    "hall",
+    "saal",
+    "theater",
+    "theatre",
+    "stage",
+    "buhne",
+    "buehne",
+    "kirche",
+    "church",
+    "arena",
+    "palace",
+)
+PERFORMANCE_TAG_MARKERS = ("#performance", "type:performance")
+PERFORMANCE_SCORE_THRESHOLD = 3
 
 # Не падаємо на імпорті, якщо облікові дані відсутні —
 # функції нижче оброблятимуть це та повертатимуть безпечні значення.
@@ -709,14 +756,43 @@ def get_performance_events(max_results: int = 150, ttl: int = 300):
         filtered = []
         for ev in events:
             try:
-                text = " ".join(
-                    [
-                        ev.get("summary", ""),
-                        ev.get("description", ""),
-                        ev.get("location", ""),
-                    ]
-                ).lower()
-                if any(keyword in text for keyword in PERFORMANCE_KEYWORDS) and ev.get("start"):
+                summary = (ev.get("summary") or "").lower()
+                description = (ev.get("description") or "").lower()
+                location = (ev.get("location") or "").lower()
+                text = " ".join([summary, description, location])
+
+                has_explicit_tag = any(marker in text for marker in PERFORMANCE_TAG_MARKERS)
+                summary_match = any(keyword in summary for keyword in PERFORMANCE_KEYWORDS) or any(
+                    pattern.search(summary) for pattern in PERFORMANCE_KEYWORD_PATTERNS
+                )
+                description_match = any(
+                    keyword in description for keyword in PERFORMANCE_KEYWORDS
+                ) or any(pattern.search(description) for pattern in PERFORMANCE_KEYWORD_PATTERNS)
+                location_keyword_match = any(
+                    keyword in location for keyword in PERFORMANCE_KEYWORDS
+                ) or any(pattern.search(location) for pattern in PERFORMANCE_KEYWORD_PATTERNS)
+                stage_location_match = any(
+                    keyword in location for keyword in PERFORMANCE_LOCATION_KEYWORDS
+                )
+                negative_match = any(
+                    keyword in text for keyword in PERFORMANCE_NEGATIVE_KEYWORDS
+                )
+
+                score = 0
+                if has_explicit_tag:
+                    score += 3
+                if summary_match:
+                    score += 2
+                if description_match:
+                    score += 1
+                if location_keyword_match:
+                    score += 1
+                if stage_location_match:
+                    score += 1
+                if negative_match and not has_explicit_tag:
+                    score -= 3
+
+                if score >= PERFORMANCE_SCORE_THRESHOLD and ev.get("start"):
                     filtered.append(ev)
             except Exception:
                 continue

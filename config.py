@@ -42,6 +42,7 @@ if not ADMIN_ID:
 
 # Налаштування бази даних
 DATABASE_FILE = "bot_data.db"
+DB_ENCRYPTION_KEY = os.getenv("DB_ENCRYPTION_KEY")
 
 # Отримуємо API ключ для YouTube
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -55,6 +56,9 @@ if not OBERIG_PLAYLIST_ID:
 
 # ID групового чату за замовчуванням для сповіщень про нові відео
 DEFAULT_GROUP_CHAT_ID = os.getenv("DEFAULT_GROUP_CHAT_ID")
+
+# Пріоритетний користувач для аналізу повідомлень у груповому чаті
+CHOIR_LEADER_USER_ID = os.getenv("CHOIR_LEADER_USER_ID")
 
 """
 Configuration module.

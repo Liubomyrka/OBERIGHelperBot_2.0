@@ -51,6 +51,17 @@ from handlers.admin_handler import (
     force_video_check_command,
 )
 from handlers.feedback_handler import start_feedback, show_my_feedback
+from handlers.knowledge_tools_handler import (
+    announcements_command,
+    confirmations_command,
+    decisions_command,
+    digest_off_command,
+    digest_on_command,
+    draft_announcement_command,
+    summary_day_command,
+    summary_week_command,
+    tasks_command,
+)
 from handlers.oberig_assistant_handler import handle_oberig_assistant
 from handlers.drive_utils import (
     list_sheets,
@@ -68,6 +79,7 @@ from .youtube_menu import (
 from .schedule_menu import show_schedule_menu
 from .user_utils import auto_add_user
 from .share_handler import share_latest_video, share_popular_video
+from utils.privacy import mask_user_id, new_request_id, text_meta
 
 
 SCHEDULE_MENU_TEXT_PRIVATE = """📅 *Меню розкладу*
@@ -97,7 +109,9 @@ MAIN_MENU_TEXT = """
 🎶 *Головне меню OBERIG*  
 Обери опцію внизу ⬇️:  
 • 📅 Розклад  
+• 🧠 Асистент  
 • ▶️ YouTube  
+• 🎵 Ноти  
 • 📝 Відгуки  
 • 🌐 Соцмережі
 """
@@ -147,10 +161,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         bot_users_info[str(user_id)] = user_name
         set_value("bot_users_info", json.dumps(bot_users_info))
-        logger.info(f"Збережено користувачів: {get_value('bot_users')}")
-        logger.info(
-            f"Збережено інформацію про користувачів: {get_value('bot_users_info')}"
-        )
+        logger.info("Оновлено кеш користувачів: count=%d", len(bot_users))
+        logger.info("Оновлено кеш user info: count=%d", len(bot_users_info))
         if update.effective_chat.type == "private":
             update_user_list("users_with_reminders", user_id, add=True)
             await show_main_menu(update, context)
@@ -162,7 +174,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             try:
                 all_chats = get_value("group_chats")
-                logger.info(f"🔍 Поточний список групових чатів: {all_chats}")
+                logger.info("🔍 Оновлення списку групових чатів: cache_present=%s", bool(all_chats))
                 if all_chats:
                     group_list = json.loads(all_chats)
                 else:
@@ -184,8 +196,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     group_list.append(chat_info)
                     set_value("group_chats", json.dumps(group_list))
                     logger.info(f"✅ Груповий чат {chat_id} додано до списку")
-                updated_chats = get_value("group_chats")
-                logger.info(f"🔍 Оновлений список групових чатів: {updated_chats}")
+                logger.info("🔍 Кількість відомих групових чатів: %d", len(group_list))
             except Exception as e:
                 logger.error(f"❌ Помилка при додаванні групового чату до списку: {e}")
             message = await update.message.reply_text(
@@ -238,7 +249,15 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from .youtube_menu import show_youtube_menu, latest_video_command, most_popular_video_command, top_10_videos_command
     chat_type = update.effective_chat.type
     text = update.message.text
-    logger.info(f"🔄 Обробка текстової кнопки або повідомлення: {text}")
+    request_id = new_request_id()
+    safe_uid = mask_user_id(update.effective_user.id if update.effective_user else None)
+    logger.info(
+        "🔄 Обробка повідомлення request_id=%s user=%s chat_type=%s %s",
+        request_id,
+        safe_uid,
+        chat_type,
+        text_meta(text),
+    )
 
     if chat_type != "private":
         if text == "Помічник":
@@ -274,13 +293,16 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     standard_commands = [
         "/start",
+        "🏠 Старт",
         "📅 Розклад",
+        "🧠 Асистент",
         "ℹ️ Допомога",
         "▶️ YouTube",
         "🌐 Соцмережі",
         "📝 Відгуки",
         "📩 Надіслати відгук",
         "📋 Мої відгуки",
+        "🤖 Запит до асистента",
         "⚙️ Меню адміністратора",
         "📊 Аналітика",
         "👥 Списки",
@@ -318,6 +340,16 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📊 7 днів",
         "📊 30 днів",
         "📈 Статистика",
+        "📅 Підсумок дня",
+        "🗓️ Підсумок тижня",
+        "🧾 Рішення",
+        "✅ Задачі",
+        "📣 Оголошення",
+        "🟢 Дайджест ON",
+        "🔴 Дайджест OFF",
+        "📝 Чернетка оголошення",
+        "🙋 Підтвердження участі",
+        "📄 Отримати ноти",
         "🔙 Адмін меню",
         "📊 Аналітика за 7 днів",
         "📊 Аналітика за 30 днів",
@@ -333,6 +365,18 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if text == "📅 Розклад":
                 await show_schedule_menu(update, context)
                 logger.info("✅ Натиснуто кнопку '📅 Розклад'")
+            elif text == "🏠 Старт":
+                await show_main_menu(update, context)
+                logger.info("✅ Натиснуто кнопку '🏠 Старт'")
+            elif text == "🧠 Асистент":
+                await show_assistant_menu(update, context)
+                logger.info("✅ Натиснуто кнопку '🧠 Асистент'")
+            elif text == "🤖 Запит до асистента":
+                message = await update.message.reply_text(
+                    "🤖 Напиши запит вільним текстом, і я дам відповідь з джерелами."
+                )
+                save_bot_message(chat_id, message.message_id, "general")
+                logger.info("✅ Натиснуто кнопку '🤖 Запит до асистента'")
             elif text == "ℹ️ Допомога":
                 await help_command(update, context)
                 logger.info("✅ Натиснуто кнопку 'ℹ️ Допомога'")
@@ -443,6 +487,33 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.args = ["7"]
                     await analytics_command(update, context)
                     logger.info("✅ Натиснуто кнопку '📊 7 днів'")
+            elif text == "📅 Підсумок дня":
+                await summary_day_command(update, context)
+                logger.info("✅ Натиснуто кнопку '📅 Підсумок дня'")
+            elif text == "🗓️ Підсумок тижня":
+                await summary_week_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🗓️ Підсумок тижня'")
+            elif text == "🧾 Рішення":
+                await decisions_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🧾 Рішення'")
+            elif text == "✅ Задачі":
+                await tasks_command(update, context)
+                logger.info("✅ Натиснуто кнопку '✅ Задачі'")
+            elif text == "📣 Оголошення":
+                await announcements_command(update, context)
+                logger.info("✅ Натиснуто кнопку '📣 Оголошення'")
+            elif text == "🟢 Дайджест ON":
+                await digest_on_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🟢 Дайджест ON'")
+            elif text == "🔴 Дайджест OFF":
+                await digest_off_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🔴 Дайджест OFF'")
+            elif text == "📝 Чернетка оголошення":
+                await draft_announcement_command(update, context)
+                logger.info("✅ Натиснуто кнопку '📝 Чернетка оголошення'")
+            elif text == "🙋 Підтвердження участі":
+                await confirmations_command(update, context)
+                logger.info("✅ Натиснуто кнопку '🙋 Підтвердження участі'")
             elif text == "📊 30 днів":
                 if await is_admin(update.effective_user.id):
                     context.args = ["30"]
@@ -540,6 +611,9 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif text == "🎵 Ноти" and chat_type == "private":
                 await show_notes_menu(update, context)
                 logger.info("✅ Натиснуто кнопку '🎵 Ноти'")
+            elif text == "📄 Отримати ноти" and chat_type == "private":
+                await show_all_notes(update, context)
+                logger.info("✅ Натиснуто кнопку '📄 Отримати ноти'")
             elif text == "📋 Всі ноти" and chat_type == "private":
                 await show_all_notes(update, context)
                 logger.info("✅ Натиснуто кнопку '📋 Всі ноти'")
@@ -571,12 +645,22 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif context.user_data.get("awaiting_keyword") and chat_type == "private":
             # Передаємо текст як ключове слово для пошуку нот
             await search_notes(update, context)
-            logger.info(f"✅ Виконується пошук нот за ключовим словом: {text}")
+            logger.info(
+                "✅ Пошук нот request_id=%s user=%s %s",
+                request_id,
+                safe_uid,
+                text_meta(text),
+            )
         else:
             await handle_oberig_assistant(update, context)
-            logger.info(f"✅ OBERIG-помічник обробив запит: {text}")
+            logger.info(
+                "✅ OBERIG-помічник завершив request_id=%s user=%s %s",
+                request_id,
+                safe_uid,
+                text_meta(text),
+            )
     except Exception as e:
-        logger.error(f"❌ Помилка при обробці команди: {e}")
+        logger.error("❌ Помилка при обробці команди request_id=%s: %s", request_id, e)
         message = await update.message.reply_text(
             "❌ *Щось пішло не так 😔* Спробуй ще раз! ⬇️"
         )
@@ -631,14 +715,43 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def get_main_keyboard(user_id: int) -> ReplyKeyboardMarkup:
     """Повертає клавіатуру головного меню з урахуванням ролі користувача."""
     keyboard = [
-        [KeyboardButton("📅 Розклад"), KeyboardButton("🎵 Ноти")],
-        [KeyboardButton("▶️ YouTube"), KeyboardButton("🌐 Соцмережі")],
-        [KeyboardButton("📝 Відгуки"), KeyboardButton("ℹ️ Допомога")],
+        [KeyboardButton("📅 Розклад"), KeyboardButton("▶️ YouTube")],
+        [KeyboardButton("🎵 Ноти"), KeyboardButton("🧠 Асистент")],
+        [KeyboardButton("📝 Відгуки"), KeyboardButton("🌐 Соцмережі")],
+        [KeyboardButton("ℹ️ Допомога"), KeyboardButton("🏠 Старт")],
     ]
     # Додаємо кнопку "⚙️ Меню адміністратора" для адміністраторів
     if await is_admin(user_id):
         keyboard.append([KeyboardButton("⚙️ Меню адміністратора")])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+
+async def show_assistant_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await auto_add_user(update, context)
+    logger.info("🔄 Відображення меню асистента")
+    try:
+        keyboard = [
+            [KeyboardButton("📅 Підсумок дня"), KeyboardButton("🗓️ Підсумок тижня")],
+            [KeyboardButton("🧾 Рішення"), KeyboardButton("✅ Задачі")],
+            [KeyboardButton("📣 Оголошення"), KeyboardButton("🙋 Підтвердження участі")],
+            [KeyboardButton("📝 Чернетка оголошення"), KeyboardButton("🤖 Запит до асистента")],
+            [KeyboardButton("🟢 Дайджест ON"), KeyboardButton("🔴 Дайджест OFF")],
+            [KeyboardButton("🔙 Головне меню")],
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        message = await update.message.reply_text(
+            "🧠 *Меню асистента*\n\nОберіть потрібну дію або напишіть запит вручну.",
+            parse_mode="Markdown",
+            reply_markup=reply_markup,
+        )
+        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
+        logger.info("✅ Меню асистента відображено")
+    except Exception as e:
+        logger.error(f"❌ Помилка при відображенні меню асистента: {e}")
+        message = await update.message.reply_text(
+            "❌ *Не вдалося відкрити меню асистента.* Спробуйте ще раз."
+        )
+        save_bot_message(str(update.effective_chat.id), message.message_id, "general")
 
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -759,5 +872,6 @@ __all__ = [
     "rating_callback",
     "redirect_to_private",
     "show_schedule_menu",
+    "show_assistant_menu",
 
 ]

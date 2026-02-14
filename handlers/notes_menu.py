@@ -25,7 +25,7 @@ async def show_notes_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     keyboard = [
-        [KeyboardButton("📋 Всі ноти")],
+        [KeyboardButton("📄 Отримати ноти"), KeyboardButton("📋 Всі ноти")],
         [KeyboardButton("🔍 За ключовим словом"), KeyboardButton("🔙 Головне меню")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

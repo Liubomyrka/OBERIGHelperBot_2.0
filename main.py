@@ -60,6 +60,7 @@ from utils.logger import logger
 from database import (
     init_db,
     migrate_database,
+    migrate_sensitive_values_encryption,
     get_value,
     set_value,
     update_user_list,
@@ -68,6 +69,19 @@ from handlers.share_handler import share_latest_video, share_popular_video
 from handlers.notification_handler import (
     check_and_notify_new_videos,
     toggle_video_notifications,
+)
+from handlers.group_index_handler import index_group_message, cleanup_group_index_job
+from handlers.knowledge_tools_handler import (
+    announcements_command,
+    confirmations_command,
+    decisions_command,
+    digest_off_command,
+    digest_on_command,
+    draft_announcement_command,
+    summary_day_command,
+    summary_week_command,
+    tasks_command,
+    weekly_digest_job,
 )
 from handlers.admin_handler import (
     analytics_command,
@@ -95,7 +109,7 @@ from utils.calendar_utils import (
 )
 import json
 import time
-from telegram.error import Conflict, NetworkError
+from telegram.error import Conflict, NetworkError, TimedOut
 from config import TELEGRAM_TOKEN
 
 
@@ -162,7 +176,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     global _last_error_sig, _last_error_ts, _last_error_count
     error = context.error
 
-    is_network = isinstance(error, (httpx.ConnectError, NetworkError))
+    is_network = isinstance(error, (httpx.NetworkError, NetworkError, TimedOut))
     if is_network:
         sig = f"{type(error).__name__}:{getattr(error, 'args', None)}"
         now_ts = time.time()
@@ -231,6 +245,7 @@ async def main():
     else:
         logger.info("Використовуємо існуючу базу bot_data.db")
     migrate_database()
+    migrate_sensitive_values_encryption()
 
     group_notifications = get_value("group_notifications_disabled")
     if group_notifications is None:
@@ -302,6 +317,15 @@ async def main():
         BotCommand("most_popular_video", "Найпопулярніше відео"),
         BotCommand("top_10_videos", "Топ-10 відео"),  # Оновлюємо
         BotCommand("feedback", "Меню відгуків"),
+        BotCommand("summary_day", "Підсумок за день"),
+        BotCommand("summary_week", "Підсумок за тиждень"),
+        BotCommand("decisions", "Рішення з чату"),
+        BotCommand("tasks", "Задачі з чату"),
+        BotCommand("announcements", "Оголошення з чату"),
+        BotCommand("digest_on", "Увімкнути авто-дайджест"),
+        BotCommand("digest_off", "Вимкнути авто-дайджест"),
+        BotCommand("draft_announcement", "Чернетка оголошення"),
+        BotCommand("confirmations", "Підтвердження участі"),
         BotCommand("share_latest", "Поділитися останнім відео"),
         BotCommand("share_popular", "Поділитися популярним відео"),
         BotCommand("video_notifications_on", "Увімкнути сповіщення про відео"),
@@ -369,9 +393,22 @@ async def main():
         logger.info("Успішно налаштовано команди з меню Telegram")
     except Exception as e:
         logger.error(f"Помилка при налаштуванні команд: {e}")
-        await application.bot.send_message(
-            chat_id=os.getenv("ADMIN_CHAT_ID", "0"), text=f"❌ Помилка: {str(e)}"
-        )
+        admin_id = os.getenv("ADMIN_CHAT_ID")
+        if admin_id and admin_id.lstrip("-").isdigit():
+            try:
+                await application.bot.send_message(
+                    chat_id=int(admin_id), text=f"❌ Помилка налаштування команд: {e}"
+                )
+            except Exception as notify_error:
+                logger.warning(
+                    "Не вдалося надіслати помилку адміну (chat_id=%s): %s",
+                    admin_id,
+                    notify_error,
+                )
+        else:
+            logger.warning(
+                "Сповіщення про помилку налаштування команд пропущено: некоректний ADMIN_CHAT_ID."
+            )
 
     feedback_handlers = get_feedback_handlers()
     for handler in feedback_handlers:
@@ -412,6 +449,15 @@ async def main():
             "top_10_videos", top_10_videos_command, filters=filters.ChatType.PRIVATE  # Оновлюємо
         ),
         CommandHandler("feedback", feedback_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("summary_day", summary_day_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("summary_week", summary_week_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("decisions", decisions_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("tasks", tasks_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("announcements", announcements_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("digest_on", digest_on_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("digest_off", digest_off_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("draft_announcement", draft_announcement_command, filters=filters.ChatType.PRIVATE),
+        CommandHandler("confirmations", confirmations_command, filters=filters.ChatType.PRIVATE),
         CommandHandler(
             "share_latest", share_latest_video, filters=filters.ChatType.PRIVATE
         ),
@@ -468,6 +514,7 @@ async def main():
             force_video_check_command,
             filters=filters.ChatType.PRIVATE,
         ),
+        MessageHandler(filters.TEXT & filters.ChatType.GROUPS, index_group_message),
         MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, text_menu_handler),
     ]
 
@@ -476,6 +523,7 @@ async def main():
             handler.callback = log_and_execute_command(handler.callback)
         application.add_handler(handler)
 
+    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
     application.add_handler(
         CallbackQueryHandler(event_details_callback, pattern=r"^event_")
     )
@@ -490,11 +538,16 @@ async def main():
     )
     job_queue.run_once(check_and_notify_new_videos, when=45)
     job_queue.run_repeating(check_and_notify_new_videos, interval=1800, first=1800)
+    job_queue.run_repeating(cleanup_group_index_job, interval=86400, first=300)
+    job_queue.run_repeating(weekly_digest_job, interval=604800, first=3600)
 
     create_birthday_greetings_table()
     schedule_birthday_greetings(job_queue)
 
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+    await application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=False,
+    )
     logger.info("Бот запущено успішно!")
 
 
@@ -524,9 +577,9 @@ if __name__ == "__main__":
         try:
             loop.run_until_complete(main())
             break
-        except httpx.ConnectError as connect_error:
-            url = getattr(getattr(connect_error, "request", None), "url", "unknown")
-            logger.error(f"Connection error while requesting {url}: {connect_error}")
+        except httpx.NetworkError as network_error:
+            url = getattr(getattr(network_error, "request", None), "url", "unknown")
+            logger.error(f"Connection error while requesting {url}: {network_error}")
             logger.info("Reinitializing client and retrying...")
             logger.info(f"Retrying in {delay} seconds...")
             time.sleep(delay)

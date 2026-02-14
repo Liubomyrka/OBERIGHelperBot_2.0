@@ -161,9 +161,7 @@ async def toggle_video_notifications(
     set_value("video_notifications_disabled", json.dumps(video_notifications_disabled))
 
     status = "увімкнено" if enable else "вимкнено"
-    await update.message.reply_text(
-        f"🎥 Сповіщення про нові відео {status} для вас.", parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await update.message.reply_text(f"🎥 Сповіщення про нові відео {status} для вас.")
     logger.info(
         f"✅ Сповіщення про відео {'увімкнено' if enable else 'вимкнено'} для користувача {user_id}"
     )

@@ -186,9 +186,8 @@ async def group_chats_list_command(update: Update, context: ContextTypes.DEFAULT
 
 
 async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    admin_ids = ["611511159"]
-    if user_id not in admin_ids:
+    user_id = update.effective_user.id
+    if not await is_admin(user_id):
         message = await update.message.reply_text(
             "❌ *Ця команда доступна лише адміністраторам.*", parse_mode="Markdown"
         )
@@ -278,9 +277,8 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def delete_recent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    admin_ids = ["611511159"]
-    if user_id not in admin_ids:
+    user_id = update.effective_user.id
+    if not await is_admin(user_id):
         message = await update.message.reply_text(
             "❌ *Ця команда доступна лише адміністраторам.*", parse_mode="Markdown"
         )

@@ -41,6 +41,22 @@ _SENSITIVE_PATTERNS = [
     re.compile(r"\b(sk-)[A-Za-z0-9]{20,}\b"),
     re.compile(r"\b(AIza)[A-Za-z0-9_-]{20,}\b"),
 ]
+_ID_PATTERNS = [
+    re.compile(r"(chat_id=)(-?\d{5,})"),
+    re.compile(r"(user_id=)(-?\d{5,})"),
+    re.compile(r"(chat_id:\s*)(-?\d{5,})"),
+    re.compile(r"(user_id:\s*)(-?\d{5,})"),
+    re.compile(r"(\bID:\s*)(-?\d{5,})"),
+]
+
+
+def _mask_id_text(raw: str) -> str:
+    negative = raw.startswith("-")
+    digits = raw[1:] if negative else raw
+    if len(digits) <= 4:
+        return "*" * len(digits)
+    masked = f"{digits[:2]}***{digits[-2:]}"
+    return f"-{masked}" if negative else masked
 
 
 def _mask_sensitive(value):
@@ -49,6 +65,8 @@ def _mask_sensitive(value):
     masked = value
     for pattern in _SENSITIVE_PATTERNS:
         masked = pattern.sub(lambda m: f"{m.group(1)}***", masked)
+    for pattern in _ID_PATTERNS:
+        masked = pattern.sub(lambda m: f"{m.group(1)}{_mask_id_text(m.group(2))}", masked)
     return masked
 
 

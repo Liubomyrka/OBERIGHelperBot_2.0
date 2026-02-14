@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import openai
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -15,16 +16,25 @@ from utils.calendar_utils import (
     count_events,
     get_next_event,
 )
-from database import get_value, set_value
+from database import (
+    get_group_facts,
+    get_value,
+    set_value,
+    find_group_conflicts,
+    search_group_messages,
+    search_group_messages_semantic,
+)
 from datetime import datetime, timedelta
 from handlers.drive_utils import list_sheets, send_sheet
 from handlers.notes_utils import search_notes
+from config import DEFAULT_GROUP_CHAT_ID, CHOIR_LEADER_USER_ID
 from utils import (
     init_openai_api,
     call_openai_chat,
     call_openai_assistant,
     get_openai_assistant_id,
 )
+from utils.privacy import mask_user_id, new_request_id, text_meta
 
 # Налаштування API-ключа OpenAI
 ASSISTANT_ID = init_openai_api()
@@ -33,6 +43,161 @@ ASSISTANT_ID = init_openai_api()
 OBERIG_SYSTEM_PROMPT = """
 Ти — OBERIG, привітний та ввічливий помічник українського аматорського хорового колективу «Оберіг» у Німеччині. Хор популяризує українську культуру через музику, хоровий спів, репетиції та концерти за адресою Planigenstasse 4, Bad Kreuznach. Керівниця — Віта Романченко. Ти маєш доступ до календаря (репетиції, виступи, дні народження), відео на YouTube (плейлист: https://youtube.com/playlist?list=PLEkdnztUMQ7-05r94OMzHyCVMCXvkgrFn), Facebook (https://www.facebook.com/profile.php?id=100094519583534) і чату. Відповідай дружньо, ввічливо з емоджі 🎵😊, хештегами #Оберіг #Хор, різними смайлами, різними емоджі та прикрасами (✨, 🌟) для візуального покращення. Якщо запит не про хор, скажи: "Вибач 😔, я допоможу лише з хором «Оберіг». Спробуй інше питання! #Оберіг".
 """
+
+
+def _extract_search_query(user_message: str) -> str:
+    parts = re.findall(r"[\w\u0400-\u04FF]+", user_message.lower())
+    tokens = [p for p in parts if len(p) >= 3]
+    return " ".join(tokens[:10]).strip() or user_message[:80].strip()
+
+
+async def _is_user_in_main_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if not DEFAULT_GROUP_CHAT_ID:
+        logger.error("DEFAULT_GROUP_CHAT_ID не задано: доступ до асистента заборонено (fail-closed).")
+        return False
+    try:
+        member = await context.bot.get_chat_member(
+            chat_id=int(DEFAULT_GROUP_CHAT_ID),
+            user_id=int(update.effective_user.id),
+        )
+        status = getattr(member, "status", "")
+        if status in {"creator", "administrator", "member"}:
+            return True
+        if status == "restricted" and getattr(member, "is_member", False):
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Не вдалося перевірити членство користувача у групі: {e}")
+        return False
+
+
+async def _notify_admin_misconfig(context: ContextTypes.DEFAULT_TYPE, message: str):
+    admin_id = os.getenv("ADMIN_CHAT_ID")
+    if not admin_id or not admin_id.lstrip("-").isdigit():
+        return
+    try:
+        await context.bot.send_message(chat_id=int(admin_id), text=message)
+    except Exception as e:
+        logger.debug(f"Не вдалося надіслати повідомлення адміну про misconfig: {e}")
+
+
+def _build_chat_insights(user_message: str) -> tuple[str, str, str]:
+    if not DEFAULT_GROUP_CHAT_ID:
+        return "Не налаштовано основний груповий чат.", "", "низький"
+
+    query = _extract_search_query(user_message)
+    keyword_hits = search_group_messages(
+        chat_id=str(DEFAULT_GROUP_CHAT_ID),
+        query=query,
+        lookback_days=90,
+        limit=24,
+        priority_user_id=CHOIR_LEADER_USER_ID,
+    )
+    semantic_hits = []
+    try:
+        emb_resp = openai.embeddings.create(
+            model="text-embedding-3-small",
+            input=query[:1000],
+        )
+        query_emb = emb_resp.data[0].embedding if emb_resp and emb_resp.data else []
+        if query_emb:
+            semantic_hits = search_group_messages_semantic(
+                chat_id=str(DEFAULT_GROUP_CHAT_ID),
+                query_embedding=query_emb,
+                lookback_days=90,
+                limit=24,
+                priority_user_id=CHOIR_LEADER_USER_ID,
+            )
+    except Exception as e:
+        logger.debug(f"Semantic search не спрацював, fallback на keyword: {e}")
+
+    merged_map: dict[tuple[str, int], dict] = {}
+    for item in keyword_hits:
+        key = (str(item.get("chat_id")), int(item.get("message_id")))
+        merged_map[key] = dict(item)
+    for item in semantic_hits:
+        key = (str(item.get("chat_id")), int(item.get("message_id")))
+        if key in merged_map:
+            merged_map[key]["score"] = max(
+                float(merged_map[key].get("score", 0)),
+                float(item.get("score", 0)),
+            )
+        else:
+            merged_map[key] = dict(item)
+    hits = sorted(
+        list(merged_map.values()),
+        key=lambda x: (float(x.get("score", 0)), x.get("message_date", "")),
+        reverse=True,
+    )
+    if not hits:
+        return "За останні 90 днів релевантних повідомлень у групі не знайдено.", "", "низький"
+
+    top_hits = hits[:8]
+    chat_lines = []
+    for item in top_hits:
+        author = item.get("full_name") or item.get("username") or item.get("user_id")
+        text = (item.get("text") or "").replace("\n", " ").strip()
+        if len(text) > 140:
+            text = text[:137] + "..."
+        dt = item.get("message_date", "")
+        chat_lines.append(f"- {dt}: {author}: {text}")
+
+    leader_lines = []
+    if CHOIR_LEADER_USER_ID:
+        leader_hits = [i for i in hits if str(i.get("user_id")) == str(CHOIR_LEADER_USER_ID)][:3]
+        for item in leader_hits:
+            text = (item.get("text") or "").replace("\n", " ").strip()
+            if len(text) > 160:
+                text = text[:157] + "..."
+            leader_lines.append(f"- {item.get('message_date', '')}: {text}")
+
+    confidence = "високий" if len(hits) >= 10 else "середній" if len(hits) >= 4 else "низький"
+    return "\n".join(chat_lines), "\n".join(leader_lines), confidence
+
+
+def _build_sources_block(chat_insights: str, leader_insights: str) -> str:
+    source_lines = []
+    for line in (chat_insights or "").splitlines()[:5]:
+        m = re.match(r"^-\s*(.*?):\s*(.*?):\s*(.*)$", line)
+        if m:
+            dt, author, fragment = m.groups()
+            source_lines.append(f"Джерело: {dt}, {author}, фрагмент: {fragment}")
+    for line in (leader_insights or "").splitlines()[:3]:
+        m = re.match(r"^-\s*(.*?):\s*(.*)$", line)
+        if m:
+            dt, fragment = m.groups()
+            source_lines.append(
+                f"Джерело (керівниця): {dt}, user_id={CHOIR_LEADER_USER_ID or 'n/a'}, фрагмент: {fragment}"
+            )
+    if not source_lines:
+        return "Джерела: релевантних повідомлень у чаті не знайдено."
+    return "\n".join(source_lines[:8])
+
+
+def _cross_source_verification(events: list | None, chat_insights: str, sheet_names: list[str]) -> str:
+    events = events or []
+    cal_tokens = set()
+    for ev in events[:40]:
+        summary = (ev.get("summary") or "").lower()
+        for tok in re.findall(r"[\w\u0400-\u04FF]{4,}", summary):
+            cal_tokens.add(tok)
+    chat_tokens = set(re.findall(r"[\w\u0400-\u04FF]{4,}", (chat_insights or "").lower()))
+    notes_tokens = set()
+    for name in sheet_names[:120]:
+        for tok in re.findall(r"[\w\u0400-\u04FF]{4,}", (name or "").lower()):
+            notes_tokens.add(tok)
+
+    cal_chat = sorted(cal_tokens.intersection(chat_tokens))
+    cal_notes = sorted(cal_tokens.intersection(notes_tokens))
+    if not cal_chat and not cal_notes:
+        return "Крос-перевірка: явних перетинів між чатом, календарем і нотами не виявлено."
+
+    parts = []
+    if cal_chat:
+        parts.append(f"чат+календар: {', '.join(cal_chat[:8])}")
+    if cal_notes:
+        parts.append(f"календар+ноти: {', '.join(cal_notes[:8])}")
+    return "Крос-перевірка підтверджує: " + " | ".join(parts)
 
 
 def check_chatgpt_limit(user_id: str) -> bool:
@@ -105,13 +270,31 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
     """
     user_message = update.message.text.lower()
     user_id = str(update.effective_user.id)
+    request_id = new_request_id()
+    safe_user = mask_user_id(user_id)
+
+    if not DEFAULT_GROUP_CHAT_ID:
+        await _notify_admin_misconfig(
+            context,
+            "❗ Misconfig: DEFAULT_GROUP_CHAT_ID не задано. Асистент заблоковано (fail-closed).",
+        )
+        await update.message.reply_text(
+            "❌ Функція тимчасово недоступна: не налаштовано DEFAULT_GROUP_CHAT_ID."
+        )
+        return
+
+    if not await _is_user_in_main_group(update, context):
+        await update.message.reply_text(
+            "❌ Ця функція доступна лише учасникам основної групи хору."
+        )
+        return
 
     # Перевіряємо ліміт запитів
     if not check_chatgpt_limit(user_id):
         await update.message.reply_text(
             "❌ Наразі лише /start через ліміт. Спробуй пізніше! 😕 #Оберіг"
         )
-        logger.warning(f"Ліміт запитів вичерпано для {user_id}")
+        logger.warning("Ліміт запитів вичерпано user=%s request_id=%s", safe_user, request_id)
         return
 
     try:
@@ -298,6 +481,41 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
         social_context = (
             "🌐 Facebook: https://www.facebook.com/profile.php?id=100094519583534"
         )
+        chat_insights, leader_insights, confidence_level = _build_chat_insights(user_message)
+        sources_block = _build_sources_block(chat_insights, leader_insights)
+        conflicts = find_group_conflicts(str(DEFAULT_GROUP_CHAT_ID), days=120) if DEFAULT_GROUP_CHAT_ID else []
+        conflict_hint = ""
+        if conflicts:
+            sample = conflicts[0]
+            dates = sorted(
+                {
+                    it.get("event_date")
+                    for it in sample.get("items", [])
+                    if it.get("event_date")
+                }
+            )
+            if dates:
+                conflict_hint = f"Є потенційний конфлікт у чаті щодо '{sample.get('event_key')}': дати {', '.join(dates[:4])}."
+        facts_recent = get_group_facts(
+            str(DEFAULT_GROUP_CHAT_ID),
+            fact_type=None,
+            days=30,
+            limit=40,
+        ) if DEFAULT_GROUP_CHAT_ID else []
+        facts_hint = ", ".join(
+            sorted({f.get("fact_type", "") for f in facts_recent if f.get("fact_type")})
+        )
+
+        sheet_names = []
+        try:
+            sheets = await list_sheets(update=None, context=None, use_cache=True)
+            for _, items in (sheets or {}).items():
+                for item in items:
+                    if item.get("name"):
+                        sheet_names.append(item["name"])
+        except Exception as e:
+            logger.debug(f"Не вдалося отримати дані нот для крос-перевірки: {e}")
+        cross_check = _cross_source_verification(events, chat_insights, sheet_names)
 
         # Створюємо dynamic_prompt з максимально коротким контекстом
         dynamic_prompt = f"{OBERIG_SYSTEM_PROMPT}\n\nДані для відповіді:"
@@ -313,6 +531,18 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
             dynamic_prompt += f"\n- Наступна подія: {next_event_info}"
         dynamic_prompt += f"\n- YouTube: {video_context}"
         dynamic_prompt += f"\n- Соцмережі: {social_context}"
+        dynamic_prompt += f"\n- За повідомленнями в чаті: {chat_insights}"
+        dynamic_prompt += f"\n- Пріоритетні повідомлення керівниці: {leader_insights or 'немає релевантних'}"
+        dynamic_prompt += f"\n- Рівень впевненості: {confidence_level}"
+        dynamic_prompt += f"\n- Структуровані факти з чату: {facts_hint or 'немає'}"
+        dynamic_prompt += f"\n- Конфлікти: {conflict_hint or 'не виявлено'}"
+        dynamic_prompt += f"\n- Крос-верифікація: {cross_check}"
+        dynamic_prompt += f"\n- Джерела: {sources_block}"
+        dynamic_prompt += (
+            "\nПобудуй відповідь структуровано: "
+            "'За календарем', 'За повідомленнями в чаті', "
+            "'Пріоритетні повідомлення керівниці', 'Що підтверджено'."
+        )
 
         # Формуємо контекст для ChatGPT з мінімальною історією
         chat_history_str = get_value(f"oberig_chat_history_{user_id}") or "[]"
@@ -334,9 +564,13 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
                 max_tokens=200,
                 temperature=0.9,
             )
-        # Додаємо емоджі, хештеги, смайли та прикраси
+        # Доказовий формат відповіді + джерела
         bot_response = (
-            f"🎵 {bot_response} 😊 #Оберіг ✨\n🌟 Хочеш дізнатися більше? 🙂 #Хор"
+            f"Що відомо:\n{bot_response}\n\n"
+            f"На чому базується:\n{sources_block}\n\n"
+            f"Що непідтверджено:\n{conflict_hint or 'Явних суперечностей не виявлено.'}\n\n"
+            f"Рівень впевненості:\n{confidence_level}\n\n"
+            f"Що підтверджено:\n{cross_check}"
         )
 
         # Перевіряємо довжину повідомлення
@@ -350,17 +584,20 @@ async def handle_oberig_assistant(update: Update, context: ContextTypes.DEFAULT_
         set_value(f"oberig_chat_history_{user_id}", json.dumps(chat_history[-5:]))
 
         logger.info(
-            f"✅ OBERIG обробив запит від {user_id}: {user_message} з мінімальними токенами"
+            "✅ OBERIG обробив запит user=%s request_id=%s %s",
+            safe_user,
+            request_id,
+            text_meta(user_message),
         )
 
     except openai.OpenAIError as e:
         await update.message.reply_text(
             "❌ Проблеми з ChatGPT 😕. Спробуй /start! #Оберіг 🌟"
         )
-        logger.error(f"Помилка ChatGPT для {user_id}: {e}")
+        logger.error("Помилка ChatGPT user=%s request_id=%s: %s", safe_user, request_id, e)
     except Exception as e:
         await update.message.reply_text("❌ Помилка 😔. Спробуй /start! #Оберіг ✨")
-        logger.error(f"Помилка в OBERIG для {user_id}: {e}")
+        logger.error("Помилка в OBERIG user=%s request_id=%s: %s", safe_user, request_id, e)
 
 
 __all__ = ["handle_oberig_assistant"]
